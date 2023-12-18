@@ -16,101 +16,90 @@ namespace FairAI.Patches
     [HarmonyPatch(typeof(Turret))]
     internal class TurretAIPatch
     {
-        static bool wasTargetingLastFrame;
         [HarmonyPatch("Update")]
         [HarmonyPostfix]
         static void patchUpdate(ref Turret __instance, 
             ref TurretMode ___turretModeLastFrame,
             ref bool ___hasLineOfSight,
             ref bool ___enteringBerserkMode,
+            ref bool ___wasTargetingPlayerLastFrame,
             ref float ___turretInterval,
             ref float ___lostLOSTimer)
         {
             if (!__instance.turretActive)
             {
-                wasTargetingLastFrame = false;
-                __instance.turretMode = TurretMode.Detection;
-                __instance.targetTransform = null;
                 return;
             }
-            if (__instance.targetTransform == null)
+            if (__instance.targetPlayerWithRotation == null)
             {
-                if (!wasTargetingLastFrame)
+                if (GetTarget(__instance) != null)
                 {
-                    wasTargetingLastFrame = true;
-                    if (__instance.turretMode == TurretMode.Detection)
+                    __instance.targetTransform = GetTarget(__instance).transform;
+                    bool flag = true;
+                    if (Vector3.Angle(__instance.targetTransform.position - __instance.centerPoint.position, __instance.forwardFacingPos.forward) > __instance.rotationRange)
                     {
-                        __instance.turretMode = TurretMode.Charging;
+                        flag = false;
+                    }
+                    if (Physics.Linecast(__instance.aimPoint.position, __instance.targetTransform.position, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
+                    {
+                        flag = false;
+                    }
+                    if (flag)
+                    {
+                        ___hasLineOfSight = true;
+                        ___lostLOSTimer = 0f;
+                        __instance.tempTransform.position = __instance.targetTransform.position;
+                        __instance.tempTransform.position -= Vector3.up * 0.15f;
+                        __instance.turnTowardsObjectCompass.LookAt(__instance.tempTransform);
+                        return;
+                    }
+                    if (___hasLineOfSight)
+                    {
+                        ___hasLineOfSight = false;
+                        ___lostLOSTimer = 0f;
+                    }
+                    if (!__instance.IsServer)
+                    {
+                        return;
+                    }
+                    ___lostLOSTimer += Time.deltaTime;
+                    if (___lostLOSTimer >= 2f)
+                    {
+                        ___lostLOSTimer = 0f;
+                        Debug.Log("Turret: LOS timer ended on server. checking for new player target");
+                        EnemyAICollisionDetect enemy = GetTarget(__instance);
+                        //PlayerControllerB playerControllerB = CheckForPlayersInLineOfSight();
+                        if (enemy != null)
+                        {
+                            //targetPlayerWithRotation = playerControllerB;
+                            //SwitchTargetedPlayerClientRpc((int)playerControllerB.playerClientId);
+                            __instance.targetTransform = enemy.transform;
+                            Debug.Log("Turret: Got new player target");
+                        }
+                        else
+                        {
+                            Debug.Log("Turret: No new player to target; returning to detection mode.");
+                            __instance.targetTransform = null;
+                            //targetPlayerWithRotation = null;
+                            //RemoveTargetedPlayerClientRpc();
+                        }
                     }
                 }
-                __instance.targetTransform = GetTarget(__instance).transform;
-                bool flag = true;
-                if (Vector3.Angle(__instance.targetTransform.position - __instance.centerPoint.position, __instance.forwardFacingPos.forward) > __instance.rotationRange)
-                {
-                    flag = false;
-                }
-                if (Physics.Linecast(__instance.aimPoint.position, __instance.targetTransform.position, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
-                {
-                    flag = false;
-                }
-                if (flag)
-                {
-                    ___hasLineOfSight = true;
-                    ___lostLOSTimer = 0f;
-                    __instance.tempTransform.position = __instance.targetTransform.position;
-                    __instance.tempTransform.position -= Vector3.up * 0.15f;
-                    __instance.turnTowardsObjectCompass.LookAt(__instance.tempTransform);
-                    return;
-                }
-                if (___hasLineOfSight)
-                {
-                    ___hasLineOfSight = false;
-                    ___lostLOSTimer = 0f;
-                }
-                if (!__instance.IsServer)
-                {
-                    return;
-                }
-                ___lostLOSTimer += Time.deltaTime;
-                if (___lostLOSTimer >= 2f)
-                {
-                    ___lostLOSTimer = 0f;
-                    Debug.Log("Turret: LOS timer ended on server. checking for new player target");
-                    EnemyAICollisionDetect enemy = GetTarget(__instance);
-                    //PlayerControllerB playerControllerB = CheckForPlayersInLineOfSight();
-                    if (enemy != null)
-                    {
-                        //targetPlayerWithRotation = playerControllerB;
-                        //SwitchTargetedPlayerClientRpc((int)playerControllerB.playerClientId);
-                        __instance.targetTransform = enemy.transform;
-                        Debug.Log("Turret: Got new player target");
-                    }
-                    else
-                    {
-                        Debug.Log("Turret: No new player to target; returning to detection mode.");
-                        __instance.targetTransform = null;
-                        //targetPlayerWithRotation = null;
-                        //RemoveTargetedPlayerClientRpc();
-                    }
-                }
-            }
-            else if (wasTargetingLastFrame)
-            {
-                wasTargetingLastFrame = false;
-                __instance.turretMode = TurretMode.Detection;
             }
             switch (__instance.turretMode)
             {
                 case TurretMode.Detection:
                     if (___turretInterval >= 0.25f)
                     {
-                        ___turretInterval = 0f;
-                        EnemyAICollisionDetect enemy = GetTarget(__instance, 1.35f, true);
-                        if (enemy != null && !enemy.mainScript.isEnemyDead)
-                        {
-                            __instance.targetTransform = enemy.transform;
-                            __instance.turretMode = (TurretMode)1;
-                            patchSwitchTargetedClientRpc(0, setModeToCharging: true, ref __instance);
+                        if (__instance.targetPlayerWithRotation == null) {
+                            ___turretInterval = 0f;
+                            EnemyAICollisionDetect enemy = GetTarget(__instance, 1.35f, true);
+                            if (enemy != null && !enemy.mainScript.isEnemyDead)
+                            {
+                                __instance.targetTransform = enemy.transform;
+                                __instance.turretMode = (TurretMode)1;
+                                patchSwitchTargetedClientRpc(0, setModeToCharging: true, ref __instance);
+                            }
                         }
                         /*
                         PlayerControllerB playerControllerB = CheckForPlayersInLineOfSight(1.35f, angleRangeCheck: true);
@@ -135,7 +124,6 @@ namespace FairAI.Patches
                         if (!___hasLineOfSight)
                         {
                             Debug.Log("hasLineOfSight is false");
-                            __instance.targetTransform = null;
                             patchRemoveTargetedPlayerClientRpc(ref __instance);
                         }
                     }
@@ -153,11 +141,6 @@ namespace FairAI.Patches
                     }
                     break;
                 case TurretMode.Berserk:
-                    if (___turretModeLastFrame != TurretMode.Berserk)
-                    {
-                        wasTargetingLastFrame = false;
-                        __instance.targetTransform = null;
-                    }
                     if (___enteringBerserkMode)
                     {
                         break;
@@ -165,10 +148,7 @@ namespace FairAI.Patches
                     if (___turretInterval >= 0.21f)
                     {
                         ___turretInterval = 0f;
-                        if (GetTarget(__instance, 3f) != null)
-                        {
-                            GetTarget(__instance, 3f).mainScript.HitEnemyOnLocalClient(2);
-                        }
+                        GetTarget(__instance, 3f)?.mainScript.HitEnemyOnLocalClient(2);
                         Ray shootRay = new Ray(__instance.aimPoint.position, __instance.aimPoint.forward);
                         if (Physics.Raycast(shootRay, out RaycastHit hit, 30f, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
                         {
