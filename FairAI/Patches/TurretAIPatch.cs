@@ -16,6 +16,7 @@ namespace FairAI.Patches
     [HarmonyPatch(typeof(Turret))]
     internal class TurretAIPatch
     {
+        /*
         [HarmonyPatch("Update")]
         [HarmonyPostfix]
         static void patchUpdate(ref Turret __instance, 
@@ -78,15 +79,6 @@ namespace FairAI.Patches
                                 __instance.turretMode = (TurretMode)1;
                             }
                         }
-                        /*
-                        PlayerControllerB playerControllerB = CheckForPlayersInLineOfSight(1.35f, angleRangeCheck: true);
-                        if (playerControllerB != null && !playerControllerB.isPlayerDead)
-                        {
-                            targetPlayerWithRotation = playerControllerB;
-                            SwitchTurretMode(1);
-                            SwitchTargetedPlayerClientRpc((int)playerControllerB.playerClientId, setModeToCharging: true);
-                        }
-                        */
                     }
                     break;
                 case TurretMode.Firing:
@@ -156,5 +148,6 @@ namespace FairAI.Patches
             }
             return null;
         }
+        */
     }
 }
