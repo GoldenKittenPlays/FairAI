@@ -13,12 +13,13 @@ namespace FairAI.Patches
     [HarmonyPatch(typeof(Landmine))]
     internal class MineAIPatch
     {
+
         [HarmonyPatch("OnTriggerEnter")]
         [HarmonyPostfix]
-        static void patchOnTriggerEnter(Collider other, Landmine __instance, ref float ___pressMineDebounceTimer)
+        static void patchOnTriggerEnter(Collider other, ref Landmine __instance, ref float ___pressMineDebounceTimer)
         {
-            EnemyAI component = other.gameObject.GetComponent<EnemyAI>();
-            if (component != null && !component.isEnemyDead)
+            EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
+            if (component != null && !component.mainScript.isEnemyDead)
             {
                 ___pressMineDebounceTimer = 0.5f;
                 __instance.PressMineServerRpc();
@@ -29,8 +30,8 @@ namespace FairAI.Patches
         [HarmonyPostfix]
         static void patchOnTriggerExit(Collider other, ref Landmine __instance, ref bool ___sendingExplosionRPC)
         {
-            EnemyAI component = other.gameObject.GetComponent<EnemyAI>();
-            if (component != null && !component.isEnemyDead)
+            EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
+            if (component != null && !component.mainScript.isEnemyDead)
             {
                 if (!__instance.hasExploded)
                 {
@@ -43,10 +44,10 @@ namespace FairAI.Patches
 
         [HarmonyPatch("SpawnExplosion")]
         [HarmonyPostfix]
-        static void patchSpawnExplosion(ref Landmine __instance, Vector3 explosionPosition, bool spawnExplosionEffect = false, float killRange = 1f, float damageRange = 1f)
+        static void patchSpawnExplosion(Vector3 explosionPosition, bool spawnExplosionEffect = false, float killRange = 1f, float damageRange = 1f)
         {
             Collider[] array = Physics.OverlapSphere(explosionPosition, 6f, 2621448, QueryTriggerInteraction.Collide);
-            EnemyAI enemy = null;
+            EnemyAICollisionDetect enemy = null;
             for (int i = 0; i < array.Length; i++)
             {
                 float num2 = Vector3.Distance(explosionPosition, array[i].transform.position);
@@ -54,19 +55,19 @@ namespace FairAI.Patches
                 {
                     continue;
                 }
-                if (array[i].gameObject.GetComponent<EnemyAI>() != null)
+                if (array[i].gameObject.GetComponent<EnemyAICollisionDetect>() != null)
                 {
-                    enemy = array[i].gameObject.GetComponent<EnemyAI>();
-                    if (enemy != null && enemy.IsOwner)
+                    enemy = array[i].gameObject.GetComponent<EnemyAICollisionDetect>();
+                    if (enemy != null && enemy.mainScript.IsOwner)
                     {
                         if (num2 < killRange)
                         {
                             Vector3 bodyVelocity = (enemy.transform.position - explosionPosition) * 80f / Vector3.Distance(enemy.transform.position, explosionPosition);
-                            enemy.KillEnemyOnOwnerClient(true);
+                            enemy.mainScript.KillEnemyOnOwnerClient(true);
                         }
                         else if (num2 < damageRange)
                         {
-                            enemy.HitEnemyOnLocalClient(2);
+                            enemy.mainScript.HitEnemyOnLocalClient(2);
                         }
                     }
                 }

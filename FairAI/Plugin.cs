@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using FairAI.Patches;
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
@@ -10,13 +11,13 @@ using System.Threading.Tasks;
 namespace FairAI
 {
     [BepInPlugin(modGUID, modName, modVersion)]
-    public class BaseMod : BaseUnityPlugin
+    public class Plugin : BaseUnityPlugin
     {
         private const string modGUID = "GoldenKitten.FairAI", modName = "Fair AI", modVersion = "1.0.0";
 
         private readonly Harmony harmony = new Harmony(modGUID);
 
-        private static BaseMod Instance;
+        private static Plugin Instance;
 
         internal ManualLogSource logger;
 
@@ -31,7 +32,9 @@ namespace FairAI
 
             logger.LogInfo("Fair AI initiated!");
 
-            harmony.PatchAll(typeof(BaseMod));
+            harmony.PatchAll(typeof(Plugin));
+            harmony.PatchAll(typeof(MineAIPatch));
+            harmony.PatchAll(typeof(TurretAIPatch));
         }
     }
 }
