@@ -62,28 +62,6 @@ namespace FairAI.Patches
                     {
                         return;
                     }
-                    ___lostLOSTimer += Time.deltaTime;
-                    if (___lostLOSTimer >= 2f)
-                    {
-                        ___lostLOSTimer = 0f;
-                        Debug.Log("Turret: LOS timer ended on server. checking for new player target");
-                        EnemyAICollisionDetect enemy = GetTarget(__instance);
-                        //PlayerControllerB playerControllerB = CheckForPlayersInLineOfSight();
-                        if (enemy != null)
-                        {
-                            //targetPlayerWithRotation = playerControllerB;
-                            //SwitchTargetedPlayerClientRpc((int)playerControllerB.playerClientId);
-                            __instance.targetTransform = enemy.transform;
-                            Debug.Log("Turret: Got new player target");
-                        }
-                        else
-                        {
-                            Debug.Log("Turret: No new player to target; returning to detection mode.");
-                            __instance.targetTransform = null;
-                            //targetPlayerWithRotation = null;
-                            //RemoveTargetedPlayerClientRpc();
-                        }
-                    }
                 }
             }
             switch (__instance.turretMode)
@@ -98,7 +76,6 @@ namespace FairAI.Patches
                             {
                                 __instance.targetTransform = enemy.transform;
                                 __instance.turretMode = (TurretMode)1;
-                                patchSwitchTargetedClientRpc(0, setModeToCharging: true, ref __instance);
                             }
                         }
                         /*
@@ -110,22 +87,6 @@ namespace FairAI.Patches
                             SwitchTargetedPlayerClientRpc((int)playerControllerB.playerClientId, setModeToCharging: true);
                         }
                         */
-                    }
-                    break;
-                case TurretMode.Charging:
-                    if (!__instance.IsServer)
-                    {
-                        break;
-                    }
-                    if (___turretInterval >= 1.5f)
-                    {
-                        ___turretInterval = 0f;
-                        Debug.Log("Charging timer is up, setting to firing mode");
-                        if (!___hasLineOfSight)
-                        {
-                            Debug.Log("hasLineOfSight is false");
-                            patchRemoveTargetedPlayerClientRpc(ref __instance);
-                        }
                     }
                     break;
                 case TurretMode.Firing:
@@ -159,57 +120,6 @@ namespace FairAI.Patches
             }
         }
 
-        [HarmonyPatch("SwitchTargetedPlayerClientRpc")]
-        [HarmonyPostfix]
-        static void patchSwitchTargetedClientRpc(int playerId, bool setModeToCharging, ref Turret __instance)
-        {
-            if (setModeToCharging != true)
-            {
-                setModeToCharging = false;
-            }
-            var type = AccessTools.TypeByName("__RpcExecStage");
-            var rpc = AccessTools.Field(type, "__rpc_exec_stage");
-            NetworkManager networkManager = __instance.NetworkManager;
-            if (networkManager is null || !networkManager.IsListening)
-            {
-                return;
-            }
-            if (rpc.FieldHandle.Value.ToString().ToUpper().Equals("CLIENT") && (networkManager.IsClient || networkManager.IsHost) && !__instance.IsServer)
-            {
-                if (__instance.targetPlayerWithRotation == null)
-                {
-                    if (GetTarget(__instance) != null)
-                    {
-                        __instance.targetTransform = GetTarget(__instance).transform;
-                    }
-                }
-                if (setModeToCharging)
-                {
-                    __instance.turretMode = (TurretMode)1;
-                }
-            }
-        }
-
-        [HarmonyPatch("RemoveTargetedPlayerClientRpc")]
-        [HarmonyPostfix]
-        static void patchRemoveTargetedPlayerClientRpc(ref Turret __instance)
-        {
-            //var type = AccessTools.FirstInner(typeof(NetworkBehaviour), t => t.Name.Contains("__rpc_exec_stage"));
-            var type = AccessTools.TypeByName("__RpcExecStage");
-            var rpc = AccessTools.Field(type, "__rpc_exec_stage");
-            NetworkManager networkManager = __instance.NetworkManager;
-            if ((object)networkManager != null && networkManager.IsListening)
-            {
-                if (rpc.FieldHandle.Value.ToString().ToUpper().Equals("CLIENT") && (networkManager.IsClient || networkManager.IsHost))
-                {
-                    if (__instance.targetPlayerWithRotation == null)
-                    {
-                        __instance.targetTransform = null;
-                    }
-                }
-            }
-        }
-
         static EnemyAICollisionDetect GetTarget(Turret turret, float radius = 2f, bool angleRangeCheck = false)
         {
             if (turret.targetPlayerWithRotation == null)
@@ -220,7 +130,8 @@ namespace FairAI.Patches
                 for (int i = 0; i <= 6; i++)
                 {
                     Ray shootRay = new Ray(turret.centerPoint.position, forward);
-                    if (Physics.Raycast(shootRay, out RaycastHit hit, 30f, 1051400, QueryTriggerInteraction.Ignore))
+                    //if (Physics.Raycast(shootRay, out RaycastHit hit, 30f, 1051400, QueryTriggerInteraction.Ignore))
+                    if (Physics.Raycast(shootRay, out RaycastHit hit, 30f, StartOfRound.Instance.collidersAndRoomMaskAndDefault, QueryTriggerInteraction.Ignore))
                     {
                         EnemyAICollisionDetect component = hit.transform.GetComponent<EnemyAICollisionDetect>();
                         if (component != null)
