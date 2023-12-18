@@ -196,7 +196,13 @@ namespace FairAI.Patches
             }
             if (rpc.FieldHandle.Value.ToString().ToUpper().Equals("CLIENT") && (networkManager.IsClient || networkManager.IsHost) && !__instance.IsServer)
             {
-                __instance.targetTransform = GetTarget(__instance).transform;
+                if (__instance.targetPlayerWithRotation == null)
+                {
+                    if (GetTarget(__instance) != null)
+                    {
+                        __instance.targetTransform = GetTarget(__instance).transform;
+                    }
+                }
                 if (setModeToCharging)
                 {
                     __instance.turretMode = (TurretMode)1;
@@ -216,14 +222,17 @@ namespace FairAI.Patches
             {
                 if (rpc.FieldHandle.Value.ToString().ToUpper().Equals("CLIENT") && (networkManager.IsClient || networkManager.IsHost))
                 {
-                    __instance.targetTransform = null;
+                    if (__instance.targetPlayerWithRotation == null)
+                    {
+                        __instance.targetTransform = null;
+                    }
                 }
             }
         }
 
         static EnemyAICollisionDetect GetTarget(Turret turret, float radius = 2f, bool angleRangeCheck = false)
         {
-            if (turret.targetTransform == null)
+            if (turret.targetPlayerWithRotation == null)
             {
                 Vector3 forward = turret.aimPoint.forward;
                 forward = Quaternion.Euler(0f, (int)(0f - turret.rotationRange) / radius, 0f) * forward;
