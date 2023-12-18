@@ -21,16 +21,10 @@ namespace FairAI.Patches
         [HarmonyPostfix]
         static void patchUpdate(ref Turret __instance, 
             ref TurretMode ___turretModeLastFrame,
-            ref Coroutine ___fadeBulletAudioCoroutine,
-            ref bool ___rotatingClockwise,
-            ref bool ___rotatingSmoothly,
-            ref bool ___rotatingRight,
             ref bool ___hasLineOfSight,
             ref bool ___enteringBerserkMode,
             ref float ___turretInterval,
-            ref float ___switchRotationTimer,
-            ref float ___lostLOSTimer,
-            ref float ___berserkTimer)
+            ref float ___lostLOSTimer)
         {
             if (!__instance.turretActive)
             {
@@ -116,7 +110,7 @@ namespace FairAI.Patches
                         {
                             __instance.targetTransform = enemy.transform;
                             __instance.turretMode = (TurretMode)1;
-                            SwitchTargetedClientRpc(setModeToCharging: true, __instance);
+                            patchSwitchTargetedClientRpc(0, setModeToCharging: true, ref __instance);
                         }
                         /*
                         PlayerControllerB playerControllerB = CheckForPlayersInLineOfSight(1.35f, angleRangeCheck: true);
@@ -142,7 +136,7 @@ namespace FairAI.Patches
                         {
                             Debug.Log("hasLineOfSight is false");
                             __instance.targetTransform = null;
-                            RemoveTargetedPlayerClientRpc(__instance);
+                            patchRemoveTargetedPlayerClientRpc(ref __instance);
                         }
                     }
                     break;
@@ -185,39 +179,44 @@ namespace FairAI.Patches
             }
         }
 
-        [ClientRpc]
-        static void SwitchTargetedClientRpc(bool setModeToCharging, Turret turret)
+        [HarmonyPatch("SwitchTargetedPlayerClientRpc")]
+        [HarmonyPostfix]
+        static void patchSwitchTargetedClientRpc(int playerId, bool setModeToCharging, ref Turret __instance)
         {
-            setModeToCharging = false;
+            if (setModeToCharging != true)
+            {
+                setModeToCharging = false;
+            }
             var type = AccessTools.TypeByName("__RpcExecStage");
             var rpc = AccessTools.Field(type, "__rpc_exec_stage");
-            NetworkManager networkManager = turret.NetworkManager;
+            NetworkManager networkManager = __instance.NetworkManager;
             if (networkManager is null || !networkManager.IsListening)
             {
                 return;
             }
-            if (rpc.FieldHandle.Value.ToString().ToUpper().Equals("CLIENT") && (networkManager.IsClient || networkManager.IsHost) && !turret.IsServer)
+            if (rpc.FieldHandle.Value.ToString().ToUpper().Equals("CLIENT") && (networkManager.IsClient || networkManager.IsHost) && !__instance.IsServer)
             {
-                turret.targetTransform = GetTarget(turret).transform;
+                __instance.targetTransform = GetTarget(__instance).transform;
                 if (setModeToCharging)
                 {
-                    turret.turretMode = (TurretMode)1;
+                    __instance.turretMode = (TurretMode)1;
                 }
             }
         }
 
-        [ClientRpc]
-        static void RemoveTargetedPlayerClientRpc(Turret turret)
+        [HarmonyPatch("RemoveTargetedPlayerClientRpc")]
+        [HarmonyPostfix]
+        static void patchRemoveTargetedPlayerClientRpc(ref Turret __instance)
         {
             //var type = AccessTools.FirstInner(typeof(NetworkBehaviour), t => t.Name.Contains("__rpc_exec_stage"));
             var type = AccessTools.TypeByName("__RpcExecStage");
             var rpc = AccessTools.Field(type, "__rpc_exec_stage");
-            NetworkManager networkManager = turret.NetworkManager;
+            NetworkManager networkManager = __instance.NetworkManager;
             if ((object)networkManager != null && networkManager.IsListening)
             {
                 if (rpc.FieldHandle.Value.ToString().ToUpper().Equals("CLIENT") && (networkManager.IsClient || networkManager.IsHost))
                 {
-                    turret.targetTransform = null;
+                    __instance.targetTransform = null;
                 }
             }
         }
