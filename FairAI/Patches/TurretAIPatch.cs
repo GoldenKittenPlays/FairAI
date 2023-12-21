@@ -1,114 +1,86 @@
-﻿using DunGen;
-using GameNetcodeStuff;
-using HarmonyLib;
-using JetBrains.Annotations;
-using System;
-using System.Collections;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Unity.Netcode;
+﻿using HarmonyLib;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
 
 namespace FairAI.Patches
 {
     [HarmonyPatch(typeof(Turret))]
     internal class TurretAIPatch
     {
-        /*
         [HarmonyPatch("Update")]
         [HarmonyPostfix]
-        static void patchUpdate(ref Turret __instance, 
-            ref TurretMode ___turretModeLastFrame,
-            ref bool ___hasLineOfSight,
-            ref bool ___enteringBerserkMode,
-            ref bool ___wasTargetingPlayerLastFrame,
-            ref float ___turretInterval,
-            ref float ___lostLOSTimer)
+        static void patchUpdate(ref Turret __instance, ref float ___turretInterval)
         {
-            if (!__instance.turretActive)
+            if (__instance.turretMode == TurretMode.Detection)
             {
-                return;
-            }
-            if (__instance.targetPlayerWithRotation == null)
-            {
-                if (GetTarget(__instance) != null)
+                if (!__instance.IsServer)
                 {
-                    __instance.targetTransform = GetTarget(__instance).transform;
-                    bool flag = true;
-                    if (Vector3.Angle(__instance.targetTransform.position - __instance.centerPoint.position, __instance.forwardFacingPos.forward) > __instance.rotationRange)
+                    return;
+                }
+                if (___turretInterval >= 0.25f)
+                {
+                    ___turretInterval = 0f;
+                    EnemyAICollisionDetect enemy = GetTarget(__instance, 1.35f, angleRangeCheck: true);
+                    if (enemy != null && !enemy.mainScript.isEnemyDead)
                     {
-                        flag = false;
-                    }
-                    if (Physics.Linecast(__instance.aimPoint.position, __instance.targetTransform.position, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
-                    {
-                        flag = false;
-                    }
-                    if (flag)
-                    {
-                        ___hasLineOfSight = true;
-                        ___lostLOSTimer = 0f;
-                        __instance.tempTransform.position = __instance.targetTransform.position;
-                        __instance.tempTransform.position -= Vector3.up * 0.15f;
-                        __instance.turnTowardsObjectCompass.LookAt(__instance.tempTransform);
-                        return;
-                    }
-                    if (___hasLineOfSight)
-                    {
-                        ___hasLineOfSight = false;
-                        ___lostLOSTimer = 0f;
-                    }
-                    if (!__instance.IsServer)
-                    {
-                        return;
+                        __instance.turretMode = (TurretMode)1;
                     }
                 }
             }
-            switch (__instance.turretMode)
+            if (__instance.turretMode == TurretMode.Berserk)
             {
-                case TurretMode.Detection:
-                    if (___turretInterval >= 0.25f)
+                if (___turretInterval >= 0.21f)
+                {
+                    ___turretInterval = 0f;
+                    EnemyAICollisionDetect enemy = GetTarget(__instance, 3f);
+                    enemy?.mainScript.HitEnemyOnLocalClient(2);
+                    Ray shootRay = new Ray(__instance.aimPoint.position, __instance.aimPoint.forward);
+                    if (Physics.Raycast(shootRay, out RaycastHit hit, 30f, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
                     {
-                        if (__instance.targetPlayerWithRotation == null) {
-                            ___turretInterval = 0f;
-                            EnemyAICollisionDetect enemy = GetTarget(__instance, 1.35f, true);
-                            if (enemy != null && !enemy.mainScript.isEnemyDead)
-                            {
-                                __instance.targetTransform = enemy.transform;
-                                __instance.turretMode = (TurretMode)1;
-                            }
-                        }
+                        __instance.bulletCollisionAudio.transform.position = shootRay.GetPoint(hit.distance - 0.5f);
                     }
-                    break;
-                case TurretMode.Firing:
-                    if (___turretInterval >= 0.21f)
+                }
+            }
+            if (__instance.turretMode == TurretMode.Firing)
+            {
+                if (___turretInterval >= 0.21f)
+                {
+                    ___turretInterval = 0f;
+                    EnemyAICollisionDetect enemy = GetTarget(__instance, 3f);
+                    enemy?.mainScript.HitEnemyOnLocalClient(2);
+                    Ray shootRay = new Ray(__instance.aimPoint.position, __instance.aimPoint.forward);
+                    if (Physics.Raycast(shootRay, out RaycastHit hit, 30f, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
                     {
-                        ___turretInterval = 0f;
-                        GetTarget(__instance, 3f)?.mainScript.HitEnemyOnLocalClient(2);
-                        Ray shootRay = new Ray(__instance.aimPoint.position, __instance.aimPoint.forward);
-                        if (Physics.Raycast(shootRay, out RaycastHit hit, 30f, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
-                        {
-                            __instance.bulletCollisionAudio.transform.position = shootRay.GetPoint(hit.distance - 0.5f);
-                        }
+                        __instance.bulletCollisionAudio.transform.position = shootRay.GetPoint(hit.distance - 0.5f);
                     }
-                    break;
-                case TurretMode.Berserk:
-                    if (___enteringBerserkMode)
-                    {
-                        break;
-                    }
-                    if (___turretInterval >= 0.21f)
-                    {
-                        ___turretInterval = 0f;
-                        GetTarget(__instance, 3f)?.mainScript.HitEnemyOnLocalClient(2);
-                        Ray shootRay = new Ray(__instance.aimPoint.position, __instance.aimPoint.forward);
-                        if (Physics.Raycast(shootRay, out RaycastHit hit, 30f, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
-                        {
-                            __instance.bulletCollisionAudio.transform.position = shootRay.GetPoint(hit.distance - 0.5f);
-                        }
-                    }
-                    break;
+                }
+            }
+        }
+
+        [HarmonyPatch("TurnTowardsTargetIfHasLOS")]
+        [HarmonyPostfix]
+        static void patchTurnTowardsTargetIfHasLOS(ref Turret __instance, ref bool ___hasLineOfSight, ref float ___lostLOSTimer)
+        {
+            bool flag = true;
+            EnemyAICollisionDetect enemy = GetTarget(__instance);
+            if (enemy != null)
+            {
+                if (enemy.mainScript.isEnemyDead || Vector3.Angle(__instance.targetTransform.position - __instance.centerPoint.position, __instance.forwardFacingPos.forward) > __instance.rotationRange)
+                {
+                    flag = false;
+                }
+                if (Physics.Linecast(__instance.aimPoint.position, enemy.mainScript.transform.position, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
+                {
+                    flag = false;
+                }
+                if (flag)
+                {
+                    ___hasLineOfSight = true;
+                    ___lostLOSTimer = 0f;
+                    __instance.tempTransform.position = enemy.mainScript.transform.position;
+                    __instance.tempTransform.position -= Vector3.up * 0.15f;
+                    __instance.turnTowardsObjectCompass.LookAt(__instance.tempTransform);
+                    return;
+                }
             }
         }
 
@@ -134,20 +106,11 @@ namespace FairAI.Patches
                             }
                             return component;
                         }
-                        if ((turret.turretMode == TurretMode.Firing || (turret.turretMode == TurretMode.Berserk && !turret.berserkAudio.isPlaying)) && hit.transform.tag.ToUpper().Contains("RAGDOLL"))
-                        {
-                            Rigidbody component2 = hit.transform.GetComponent<Rigidbody>();
-                            if (component2 != null)
-                            {
-                                component2.AddForce(forward.normalized * 42f, ForceMode.Impulse);
-                            }
-                        }
                     }
                     forward = Quaternion.Euler(0f, num / 6f, 0f) * forward;
                 }
             }
             return null;
         }
-        */
     }
 }

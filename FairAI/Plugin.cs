@@ -2,11 +2,6 @@
 using BepInEx.Logging;
 using FairAI.Patches;
 using HarmonyLib;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FairAI
 {
@@ -19,7 +14,7 @@ namespace FairAI
 
         private static Plugin Instance;
 
-        internal ManualLogSource logger;
+        public static ManualLogSource logger;
 
         private void Awake() 
         {
@@ -29,7 +24,6 @@ namespace FairAI
             }
 
             logger = BepInEx.Logging.Logger.CreateLogSource(modGUID);
-
             logger.LogInfo("Fair AI initiated!");
 
             harmony.PatchAll(typeof(Plugin));
