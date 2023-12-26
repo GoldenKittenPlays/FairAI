@@ -8,8 +8,8 @@ namespace FairAI.Patches
     {
 
         [HarmonyPatch("OnTriggerEnter")]
-        [HarmonyPostfix]
-        static void patchOnTriggerEnter(Collider other, ref Landmine __instance, ref float ___pressMineDebounceTimer)
+        [HarmonyPrefix]
+        static void patchOnTriggerEnter(ref Landmine __instance, Collider other, ref float ___pressMineDebounceTimer)
         {
             EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
             if (component != null && !component.mainScript.isEnemyDead)
@@ -20,8 +20,8 @@ namespace FairAI.Patches
         }
 
         [HarmonyPatch("OnTriggerExit")]
-        [HarmonyPostfix]
-        static void patchOnTriggerExit(Collider other, ref Landmine __instance, ref bool ___sendingExplosionRPC)
+        [HarmonyPrefix]
+        static void patchOnTriggerExit(ref Landmine __instance, Collider other, ref bool ___sendingExplosionRPC)
         {
             EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
             if (component != null && !component.mainScript.isEnemyDead)
@@ -36,11 +36,10 @@ namespace FairAI.Patches
         }
 
         [HarmonyPatch("SpawnExplosion")]
-        [HarmonyPostfix]
+        [HarmonyPrefix]
         static void patchSpawnExplosion(Vector3 explosionPosition, bool spawnExplosionEffect = false, float killRange = 1f, float damageRange = 1f)
         {
             Collider[] array = Physics.OverlapSphere(explosionPosition, 6f, 2621448, QueryTriggerInteraction.Collide);
-            EnemyAICollisionDetect enemy = null;
             for (int i = 0; i < array.Length; i++)
             {
                 float num2 = Vector3.Distance(explosionPosition, array[i].transform.position);
@@ -50,12 +49,11 @@ namespace FairAI.Patches
                 }
                 if (array[i].gameObject.GetComponent<EnemyAICollisionDetect>() != null)
                 {
-                    enemy = array[i].gameObject.GetComponent<EnemyAICollisionDetect>();
-                    if (enemy != null && enemy.mainScript.IsOwner)
+                    EnemyAICollisionDetect enemy = array[i].gameObject.GetComponent<EnemyAICollisionDetect>();
+                    if (enemy != null && enemy.mainScript.IsOwner && !enemy.mainScript.isEnemyDead)
                     {
                         if (num2 < killRange)
                         {
-                            Vector3 bodyVelocity = (enemy.transform.position - explosionPosition) * 80f / Vector3.Distance(enemy.transform.position, explosionPosition);
                             enemy.mainScript.KillEnemyOnOwnerClient(true);
                         }
                         else if (num2 < damageRange)
