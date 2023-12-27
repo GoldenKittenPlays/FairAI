@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using System;
 using UnityEngine;
 
 namespace FairAI.Patches
@@ -14,8 +15,11 @@ namespace FairAI.Patches
             EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
             if (component != null && !component.mainScript.isEnemyDead)
             {
-                ___pressMineDebounceTimer = 0.5f;
-                __instance.PressMineServerRpc();
+                if (Plugin.CanMobSetOffMine(Plugin.RemoveWhitespaces(component.mainScript.enemyType.enemyName.ToUpper())))
+                {
+                    ___pressMineDebounceTimer = 0.5f;
+                    __instance.PressMineServerRpc();
+                }
             }
         }
 
@@ -26,11 +30,14 @@ namespace FairAI.Patches
             EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
             if (component != null && !component.mainScript.isEnemyDead)
             {
-                if (!__instance.hasExploded)
+                if (Plugin.CanMobSetOffMine(Plugin.RemoveWhitespaces(component.mainScript.enemyType.enemyName.ToUpper())))
                 {
-                    __instance.SetOffMineAnimation();
-                    ___sendingExplosionRPC = true;
-                    __instance.ExplodeMineServerRpc();
+                    if (!__instance.hasExploded)
+                    {
+                        __instance.SetOffMineAnimation();
+                        ___sendingExplosionRPC = true;
+                        __instance.ExplodeMineServerRpc();
+                    }
                 }
             }
         }

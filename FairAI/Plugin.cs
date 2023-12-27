@@ -1,7 +1,10 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using FairAI.Patches;
 using HarmonyLib;
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace FairAI
@@ -15,9 +18,13 @@ namespace FairAI
 
         private readonly Harmony harmony = new Harmony(modGUID);
 
-        private static Plugin Instance;
+        public static Plugin Instance;
 
         public static ManualLogSource logger;
+
+        public static List<EnemyType> enemies;
+
+        public static List<Item> items;
 
         public static int wallsAndEnemyLayerMask = 524288;
 
@@ -32,6 +39,8 @@ namespace FairAI
             logger.LogInfo("Fair AI initiated!");
 
             harmony.PatchAll(typeof(Plugin));
+            harmony.PatchAll(typeof(RoundManagerPatch));
+            harmony.PatchAll(typeof(StartOfRoundPatch));
             harmony.PatchAll(typeof(MineAIPatch));
             harmony.PatchAll(typeof(TurretAIPatch));
             harmony.PatchAll(typeof(EnemyAIPatch));
@@ -43,6 +52,32 @@ namespace FairAI
             MethodInfo AI_KillEnemy_Method = AccessTools.Method(typeof(EnemyAI), nameof(EnemyAI.KillEnemyOnOwnerClient), null, null);
             MethodInfo KillEnemy_Patch_Method = AccessTools.Method(typeof(EnemyAIPatch), nameof(EnemyAIPatch.patchKillEnemyOnOwnerClient), null, null);
             harmony.Patch(AI_KillEnemy_Method, new HarmonyMethod(KillEnemy_Patch_Method), null, null, null, null);
+        }
+        public static string RemoveWhitespaces(string source)
+        {
+            return string.Join("", source.Split(default(string[]), StringSplitOptions.RemoveEmptyEntries));
+        }
+
+
+        public static bool CanMobSetOffMine(string mobName)
+        {
+            if (Instance.Config[new ConfigDefinition("Mobs", "AllMobs")].BoxedValue.ToString().ToUpper().Equals("TRUE")) {
+                foreach (ConfigDefinition entry in Instance.Config.Keys)
+                {
+                    if (RemoveWhitespaces(entry.Key.ToUpper()).Equals(mobName))
+                    {
+                        logger.LogInfo("Value of mob: " + Instance.Config[entry].BoxedValue.ToString());
+                        return Instance.Config[entry].BoxedValue.ToString().ToUpper().Equals("TRUE");
+                    }
+                }
+                logger.LogInfo("No mob found so no boom for you!");
+                return false;
+            }
+            else
+            {
+                logger.LogInfo("Boom has been disabled!");
+            }
+            return false;
         }
     }
 }
