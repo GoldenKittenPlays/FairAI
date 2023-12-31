@@ -31,5 +31,28 @@ namespace FairAI
 
             return false;
         }
+
+        public static string RemoveWhitespaces(string source)
+        {
+            return string.Join("", source.Split(default(string[]), StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        public static string RemoveSpecialCharacters(string source)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (char c in source)
+            {
+                if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
+                {
+                    sb.Append(c);
+                }
+            }
+            return sb.ToString();
+        }
+
+        public static string RemoveInvalidCharacters(string source)
+        {
+            return RemoveWhitespaces(RemoveSpecialCharacters(source));
+        }
     }
 }

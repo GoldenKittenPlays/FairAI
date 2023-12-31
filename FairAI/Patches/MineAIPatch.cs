@@ -1,5 +1,4 @@
 ﻿using HarmonyLib;
-using System;
 using UnityEngine;
 
 namespace FairAI.Patches
@@ -10,12 +9,12 @@ namespace FairAI.Patches
 
         [HarmonyPatch("OnTriggerEnter")]
         [HarmonyPrefix]
-        static void patchOnTriggerEnter(ref Landmine __instance, Collider other, ref float ___pressMineDebounceTimer)
+        static void PatchOnTriggerEnter(ref Landmine __instance, Collider other, ref float ___pressMineDebounceTimer)
         {
             EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
             if (component != null && !component.mainScript.isEnemyDead)
             {
-                if (Plugin.CanMobSetOffMine(Plugin.RemoveWhitespaces(component.mainScript.enemyType.enemyName.ToUpper())))
+                if (Plugin.CanMob("ExplodeAllMobs", ".Mine", component.mainScript.enemyType.enemyName.ToUpper()))
                 {
                     ___pressMineDebounceTimer = 0.5f;
                     __instance.PressMineServerRpc();
@@ -25,12 +24,12 @@ namespace FairAI.Patches
 
         [HarmonyPatch("OnTriggerExit")]
         [HarmonyPrefix]
-        static void patchOnTriggerExit(ref Landmine __instance, Collider other, ref bool ___sendingExplosionRPC)
+        static void PatchOnTriggerExit(ref Landmine __instance, Collider other, ref bool ___sendingExplosionRPC)
         {
             EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
             if (component != null && !component.mainScript.isEnemyDead)
             {
-                if (Plugin.CanMobSetOffMine(Plugin.RemoveWhitespaces(component.mainScript.enemyType.enemyName.ToUpper())))
+                if (Plugin.CanMob("ExplodeAllMobs", ".Mine", component.mainScript.enemyType.enemyName.ToUpper()))
                 {
                     if (!__instance.hasExploded)
                     {
@@ -44,7 +43,7 @@ namespace FairAI.Patches
 
         [HarmonyPatch("SpawnExplosion")]
         [HarmonyPrefix]
-        static void patchSpawnExplosion(Vector3 explosionPosition, bool spawnExplosionEffect = false, float killRange = 1f, float damageRange = 1f)
+        static void PatchSpawnExplosion(Vector3 explosionPosition, bool spawnExplosionEffect = false, float killRange = 1f, float damageRange = 1f)
         {
             Collider[] array = Physics.OverlapSphere(explosionPosition, 6f, 2621448, QueryTriggerInteraction.Collide);
             for (int i = 0; i < array.Length; i++)

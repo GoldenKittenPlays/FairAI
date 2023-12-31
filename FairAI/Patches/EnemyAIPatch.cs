@@ -1,10 +1,15 @@
 ﻿using FairAI.Component;
+using HarmonyLib;
+using LethalThings;
 
 namespace FairAI.Patches
 {
+    [HarmonyPatch(typeof(EnemyAI))]
     internal class EnemyAIPatch
     {
-        public static void patchKillEnemyOnOwnerClient(ref EnemyAI __instance, bool overrideDestroy = false)
+        [HarmonyPatch("KillEnemyOnOwnerClient")]
+        [HarmonyPrefix]
+        public static void PatchKillEnemyOnOwnerClient(ref EnemyAI __instance, bool overrideDestroy = false)
         {
             if (__instance.gameObject.GetComponent<FAIR_AI>() == null)
             {

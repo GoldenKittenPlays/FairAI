@@ -3,14 +3,12 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using FairAI.Patches;
 using HarmonyLib;
-using System;
 using System.Collections.Generic;
 using System.Reflection;
 
 namespace FairAI
 {
     [BepInPlugin(modGUID, modName, modVersion)]
-    [BepInDependency("TheFluff-EverythingCanDie-1.1.0", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("Evaisa-LethalThings-0.8.7", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
@@ -50,32 +48,30 @@ namespace FairAI
             //MethodInfo Turret_LOS_Patch_Method = AccessTools.Method(typeof(TurretAIPatch), nameof(TurretAIPatch.patchTurnTowardsTargetIfHasLOS), null, null);
             //harmony.Patch(Turret_HasLOS_Method, new HarmonyMethod(Turret_LOS_Patch_Method), null, null, null, null);
             MethodInfo AI_KillEnemy_Method = AccessTools.Method(typeof(EnemyAI), nameof(EnemyAI.KillEnemyOnOwnerClient), null, null);
-            MethodInfo KillEnemy_Patch_Method = AccessTools.Method(typeof(EnemyAIPatch), nameof(EnemyAIPatch.patchKillEnemyOnOwnerClient), null, null);
+            MethodInfo KillEnemy_Patch_Method = AccessTools.Method(typeof(EnemyAIPatch), nameof(EnemyAIPatch.PatchKillEnemyOnOwnerClient), null, null);
             harmony.Patch(AI_KillEnemy_Method, new HarmonyMethod(KillEnemy_Patch_Method), null, null, null, null);
         }
-        public static string RemoveWhitespaces(string source)
-        {
-            return string.Join("", source.Split(default(string[]), StringSplitOptions.RemoveEmptyEntries));
-        }
 
-
-        public static bool CanMobSetOffMine(string mobName)
+        public static bool CanMob(string parentIdentifier, string identifier, string mobName)
         {
-            if (Instance.Config[new ConfigDefinition("Mobs", "AllMobs")].BoxedValue.ToString().ToUpper().Equals("TRUE")) {
+            string mob = FairAIUtilities.RemoveInvalidCharacters(mobName).ToUpper();
+            Plugin.logger.LogInfo("Mob Name: " + mob);
+            if (Instance.Config[new ConfigDefinition("Mobs", parentIdentifier)].BoxedValue.ToString().ToUpper().Equals("TRUE"))
+            {
                 foreach (ConfigDefinition entry in Instance.Config.Keys)
                 {
-                    if (RemoveWhitespaces(entry.Key.ToUpper()).Equals(mobName))
+                    if (FairAIUtilities.RemoveInvalidCharacters(entry.Key.ToUpper()).Equals(FairAIUtilities.RemoveInvalidCharacters(mob + identifier.ToUpper())))
                     {
                         logger.LogInfo("Value of mob: " + Instance.Config[entry].BoxedValue.ToString());
                         return Instance.Config[entry].BoxedValue.ToString().ToUpper().Equals("TRUE");
                     }
                 }
-                logger.LogInfo("No mob found so no boom for you!");
+                logger.LogInfo(identifier + ": No mob found!");
                 return false;
             }
             else
             {
-                logger.LogInfo("Boom has been disabled!");
+                logger.LogInfo(parentIdentifier + ": All mobs disabled!");
             }
             return false;
         }
