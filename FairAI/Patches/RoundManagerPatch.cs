@@ -1,20 +1,17 @@
 ﻿using BepInEx.Configuration;
-using HarmonyLib;
 using System.Linq;
 using UnityEngine;
 
 namespace FairAI.Patches
 {
-    [HarmonyPatch(typeof(RoundManager))]
     internal class RoundManagerPatch
     {
-        [HarmonyPatch("Start")]
-        [HarmonyPostfix]
-        private static void PatchStart()
+        public static void PatchStart()
         {
             //This happens at the end of waiting for entrance teleport spawn
             Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
             Plugin.items = Resources.FindObjectsOfTypeAll(typeof(Item)).Cast<Item>().Where(i => i != null).ToList();
+            Plugin.allHittablesMask = StartOfRound.Instance.collidersRoomMaskDefaultAndPlayers | 2621448 | Plugin.enemyMask;
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "ExplodeAllMobs")))
             {
                 ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Mobs", // Section Title
@@ -45,7 +42,7 @@ namespace FairAI.Patches
             }
             foreach (EnemyType enemy in Plugin.enemies)
             {
-                string mobName = FairAIUtilities.RemoveInvalidCharacters(enemy.enemyName);
+                string mobName = Plugin.RemoveInvalidCharacters(enemy.enemyName);
                 if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", mobName + ".Mine")))
                 {
                     ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Mobs", // The section under which the option is shown

@@ -1,15 +1,11 @@
-﻿using HarmonyLib;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace FairAI.Patches
 {
-    [HarmonyPatch(typeof(Landmine))]
     internal class MineAIPatch
     {
 
-        [HarmonyPatch("OnTriggerEnter")]
-        [HarmonyPrefix]
-        static void PatchOnTriggerEnter(ref Landmine __instance, Collider other, ref float ___pressMineDebounceTimer)
+        public static void PatchOnTriggerEnter(ref Landmine __instance, Collider other, ref float ___pressMineDebounceTimer)
         {
             EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
             if (component != null && !component.mainScript.isEnemyDead)
@@ -22,9 +18,7 @@ namespace FairAI.Patches
             }
         }
 
-        [HarmonyPatch("OnTriggerExit")]
-        [HarmonyPrefix]
-        static void PatchOnTriggerExit(ref Landmine __instance, Collider other, ref bool ___sendingExplosionRPC)
+        public static void PatchOnTriggerExit(ref Landmine __instance, Collider other, ref bool ___sendingExplosionRPC)
         {
             EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
             if (component != null && !component.mainScript.isEnemyDead)
@@ -41,9 +35,7 @@ namespace FairAI.Patches
             }
         }
 
-        [HarmonyPatch("SpawnExplosion")]
-        [HarmonyPrefix]
-        static void PatchSpawnExplosion(Vector3 explosionPosition, bool spawnExplosionEffect = false, float killRange = 1f, float damageRange = 1f)
+        public static void PatchSpawnExplosion(Vector3 explosionPosition, bool spawnExplosionEffect = false, float killRange = 1f, float damageRange = 1f)
         {
             Collider[] array = Physics.OverlapSphere(explosionPosition, 6f, 2621448, QueryTriggerInteraction.Collide);
             for (int i = 0; i < array.Length; i++)

@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Diagnostics;
 using UnityEngine;
 
 namespace FairAI.Component
@@ -7,7 +6,6 @@ namespace FairAI.Component
     internal class BoombaTimer : MonoBehaviour
     {
         private bool isActiveBomb = false;
-        private bool timerStarted = false;
         private void Start()
         {
             StartCoroutine(StartBombTimer());

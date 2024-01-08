@@ -1,12 +1,25 @@
-﻿using UnityEngine;
+﻿using Unity.Netcode;
 
-namespace FairAI.Component
+namespace FairAI
 {
-    internal class FAIR_AI : MonoBehaviour
+    internal class FAIR_AI : NetworkBehaviour
     {
-        void Awake()
+        public EnemyAI targetWithRotation;
+
+        [ClientRpc]
+        public void SwitchedTargetedEnemyClientRpc(Turret turret, EnemyAI enemy, bool setModeToCharging = false)
         {
-            Plugin.logger.LogInfo("Fairness has been dealt.");
+            targetWithRotation = enemy;
+            if (setModeToCharging)
+            {
+                turret.SwitchTurretMode(1);
+            }
+        }
+
+        [ClientRpc]
+        public void RemoveTargetedEnemyClientRpc()
+        {
+            targetWithRotation = null;
         }
     }
 }

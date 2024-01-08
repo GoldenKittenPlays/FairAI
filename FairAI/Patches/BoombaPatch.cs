@@ -1,25 +1,19 @@
 ﻿using FairAI.Component;
-using HarmonyLib;
 using LethalThings;
 using UnityEngine;
 
 namespace FairAI.Patches
 {
-    [HarmonyPatch(typeof(RoombaAI))]
     internal class BoombaPatch
     {
-        [HarmonyPatch("Start")]
-        [HarmonyPostfix]
         public static void PatchStart(ref RoombaAI __instance)
         {
             __instance.gameObject.AddComponent<BoombaTimer>();
         }
 
-        [HarmonyPatch("DoAIInterval")]
-        [HarmonyPrefix]
         public static void PatchDoAIInterval(ref RoombaAI __instance)
         {
-            if (FairAIUtilities.IsAgentOnNavMesh(__instance.gameObject)
+            if (Plugin.IsAgentOnNavMesh(__instance.gameObject)
                     && (__instance.currentSearch != null || __instance.movingTowardsTargetPlayer) && (__instance.mineAudio.isPlaying || __instance.mineFarAudio.isPlaying)
                     && __instance.GetComponent<BoombaTimer>().IsActiveBomb())
             {
