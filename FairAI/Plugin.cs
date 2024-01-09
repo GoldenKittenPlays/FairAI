@@ -49,8 +49,8 @@ namespace FairAI
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Start", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(Turret), "Start", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchUpdate), true);
-            CreateHarmonyPatch(harmony, typeof(Turret), nameof(Turret.SetTargetToPlayerBody), null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchSetTargetToPlayerBody), true);
-            CreateHarmonyPatch(harmony, typeof(Turret), nameof(Turret.TurnTowardsTargetIfHasLOS), null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchTurnTowardsTargetIfHasLOS), true);
+            CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchSetTargetToPlayerBody), true);
+            CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchTurnTowardsTargetIfHasLOS), true);
             CreateHarmonyPatch(harmony, typeof(Landmine), nameof(Landmine.SpawnExplosion), new[] { typeof(Vector3), typeof(bool), typeof(float), typeof(float) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerEnter", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerEnter), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerExit", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerExit), false);

@@ -1,4 +1,5 @@
-﻿using Unity.Netcode;
+﻿using System.Reflection;
+using Unity.Netcode;
 
 namespace FairAI
 {
@@ -12,7 +13,10 @@ namespace FairAI
             targetWithRotation = enemy;
             if (setModeToCharging)
             {
-                turret.SwitchTurretMode(1);
+                System.Type typ = typeof(Turret);
+                MethodInfo mode_s_method = typ.GetMethod("SwitchTurretMode", BindingFlags.NonPublic | BindingFlags.Instance);
+                mode_s_method.Invoke(turret, new object[] { 1 });
+                //turret.SwitchTurretMode(1);
             }
         }
 

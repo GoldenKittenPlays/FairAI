@@ -1,6 +1,8 @@
 ﻿using GameNetcodeStuff;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 
 namespace FairAI.Patches
@@ -21,77 +23,126 @@ namespace FairAI.Patches
         public static bool PatchUpdate(ref Turret __instance)
         {
             FAIR_AI turret = __instance.gameObject.GetComponent<FAIR_AI>();
+            System.Type typ = typeof(Turret);
             if (!__instance.turretActive)
             {
-                __instance.wasTargetingPlayerLastFrame = false;
+                FieldInfo turret_type = typ.GetField("wasTargetingPlayerLastFrame", BindingFlags.NonPublic | BindingFlags.Instance);
+                turret_type.SetValue(__instance, false);
                 __instance.turretMode = TurretMode.Detection;
                 __instance.targetPlayerWithRotation = null;
                 turret.targetWithRotation = null;
                 return false;
             }
+            FieldInfo was_target_type = typ.GetField("wasTargetingPlayerLastFrame", BindingFlags.NonPublic | BindingFlags.Instance);
+            var value = was_target_type.GetValue(__instance);
             if (__instance.targetPlayerWithRotation != null || turret.targetWithRotation != null)
             {
-                if (!__instance.wasTargetingPlayerLastFrame)
+                if (!(bool)value)
                 {
-                    __instance.wasTargetingPlayerLastFrame = true;
+                    was_target_type.SetValue(__instance, true);
                     if (__instance.turretMode == TurretMode.Detection)
                     {
                         __instance.turretMode = TurretMode.Charging;
                     }
                 }
-                __instance.SetTargetToPlayerBody();
-                __instance.TurnTowardsTargetIfHasLOS();
+                MethodInfo target_method = typ.GetMethod("SetTargetToPlayerBody", BindingFlags.NonPublic | BindingFlags.Instance);
+                target_method.Invoke(__instance, null);
+                MethodInfo los_method = typ.GetMethod("TurnTowardsTargetIfHasLOS", BindingFlags.NonPublic | BindingFlags.Instance);
+                los_method.Invoke(__instance, null);
+                //__instance.SetTargetToPlayerBody();
+                //__instance.TurnTowardsTargetIfHasLOS();
             }
-            else if (__instance.wasTargetingPlayerLastFrame)
+            else if (((bool)value))
             {
-                __instance.wasTargetingPlayerLastFrame = false;
+                was_target_type.SetValue(__instance, false);
+                //__instance.wasTargetingPlayerLastFrame = false;
                 __instance.turretMode = TurretMode.Detection;
             }
+            FieldInfo mode_last_type = typ.GetField("turretModeLastFrame", BindingFlags.NonPublic | BindingFlags.Instance);
+            var mode_last_value = mode_last_type.GetValue(__instance);
+            FieldInfo rot_cw_type = typ.GetField("rotatingClockwise", BindingFlags.NonPublic | BindingFlags.Instance);
+            var rot_cw_value = rot_cw_type.GetValue(__instance);
+            FieldInfo fade_cor_type = typ.GetField("fadeBulletAudioCoroutine", BindingFlags.NonPublic | BindingFlags.Instance);
+            var fade_cor_value = fade_cor_type.GetValue(__instance);
+            FieldInfo inter_type = typ.GetField("turretInterval", BindingFlags.NonPublic | BindingFlags.Instance);
+            var inter_value = inter_type.GetValue(__instance);
+            FieldInfo rot_s_type = typ.GetField("rotatingSmoothly", BindingFlags.NonPublic | BindingFlags.Instance);
+            var rot_s_value = rot_s_type.GetValue(__instance);
+            FieldInfo rot_timer_type = typ.GetField("switchRotationTimer", BindingFlags.NonPublic | BindingFlags.Instance);
+            var rot_timer_value = rot_timer_type.GetValue(__instance);
+            FieldInfo rot_r_type = typ.GetField("rotatingRight", BindingFlags.NonPublic | BindingFlags.Instance);
+            FieldInfo has_los_type = typ.GetField("hasLineOfSight", BindingFlags.NonPublic | BindingFlags.Instance);
+            var has_los_value = has_los_type.GetValue(__instance);
+            FieldInfo los_timer_type = typ.GetField("lostLOSTimer", BindingFlags.NonPublic | BindingFlags.Instance);
+            FieldInfo ray_type = typ.GetField("shootRay", BindingFlags.NonPublic | BindingFlags.Instance);
+            var ray_value = ray_type.GetValue(__instance);
+            FieldInfo hit_type = typ.GetField("hit", BindingFlags.NonPublic | BindingFlags.Instance);
+            var hit_value = hit_type.GetValue(__instance);
+            FieldInfo ber_timer_type = typ.GetField("berserkTimer", BindingFlags.NonPublic | BindingFlags.Instance);
+            var ber_timer_value = ber_timer_type.GetValue(__instance);
+            FieldInfo ber_mode_type = typ.GetField("enteringBerserkMode", BindingFlags.NonPublic | BindingFlags.Instance);
+            var ber_mode_value = ber_mode_type.GetValue(__instance);
             switch (__instance.turretMode)
             {
                 case TurretMode.Detection:
-                    if (__instance.turretModeLastFrame != 0)
+                    mode_last_value = mode_last_type.GetValue(__instance);
+                    if (((TurretMode)mode_last_value) != 0)
                     {
-                        __instance.turretModeLastFrame = TurretMode.Detection;
-                        __instance.rotatingClockwise = false;
+                        mode_last_type.SetValue(__instance, TurretMode.Detection);
+                        rot_cw_type.SetValue(__instance, false);
+                        //__instance.turretModeLastFrame = TurretMode.Detection;
+                        //__instance.rotatingClockwise = false;
                         __instance.mainAudio.Stop();
                         __instance.farAudio.Stop();
                         __instance.berserkAudio.Stop();
-                        if (__instance.fadeBulletAudioCoroutine != null)
+                        fade_cor_value = fade_cor_type.GetValue(__instance);
+                        if (((Coroutine)fade_cor_value) != null)
                         {
-                            __instance.StopCoroutine(__instance.fadeBulletAudioCoroutine);
+                            __instance.StopCoroutine(((Coroutine)fade_cor_value));
                         }
-                        __instance.fadeBulletAudioCoroutine = __instance.StartCoroutine(__instance.FadeBulletAudio());
+                        MethodInfo los_method = typ.GetMethod("FadeBulletAudio", BindingFlags.NonPublic | BindingFlags.Instance);
+                        IEnumerator enu = (IEnumerator)los_method.Invoke(__instance, null);
+                        fade_cor_type.SetValue(__instance, __instance.StartCoroutine(enu));
+                        //__instance.fadeBulletAudioCoroutine = __instance.StartCoroutine(__instance.FadeBulletAudio());
                         __instance.bulletParticles.Stop(withChildren: true, ParticleSystemStopBehavior.StopEmitting);
                         __instance.rotationSpeed = 28f;
-                        __instance.rotatingSmoothly = true;
+                        //__instance.rotatingSmoothly = true;
+                        rot_s_type.SetValue(__instance, true);
                         __instance.turretAnimator.SetInteger("TurretMode", 0);
-                        __instance.turretInterval = UnityEngine.Random.Range(0f, 0.15f);
+                        inter_type.SetValue(__instance, UnityEngine.Random.Range(0f, 0.15f));
+                        //__instance.turretInterval = UnityEngine.Random.Range(0f, 0.15f);
                     }
                     if (!__instance.IsServer)
                     {
                         break;
                     }
-                    if (__instance.switchRotationTimer >= 7f)
+                    if (((float)rot_timer_value) >= 7f)
                     {
-                        __instance.switchRotationTimer = 0f;
-                        bool setRotateRight = !__instance.rotatingRight;
+                        rot_timer_type.SetValue(__instance, 0f);
+                        rot_timer_value = rot_timer_type.GetValue(__instance);
+                        //__instance.switchRotationTimer = 0f;
+                        bool setRotateRight = !(bool)rot_r_type.GetValue(__instance);
                         __instance.SwitchRotationClientRpc(setRotateRight);
                         __instance.SwitchRotationOnInterval(setRotateRight);
                     }
                     else
                     {
-                        __instance.switchRotationTimer += Time.deltaTime;
+                        rot_timer_type.SetValue(__instance, (((float)rot_timer_value) + Time.deltaTime));
+                        //__instance.switchRotationTimer += Time.deltaTime;
                     }
-                    if (__instance.turretInterval >= 0.25f)
+                    inter_value = inter_type.GetValue(__instance);
+                    if (((float)inter_value) >= 0.25f)
                     {
-                        __instance.turretInterval = 0f;
+                        inter_type.SetValue(__instance, 0f);
+                        //__instance.turretInterval = 0f;
                         PlayerControllerB playerControllerB = __instance.CheckForPlayersInLineOfSight(1.35f, angleRangeCheck: true);
                         List<EnemyAI> enemies = GetActualTargets(__instance, GetTargets(__instance));
                         if (playerControllerB != null && !playerControllerB.isPlayerDead)
                         {
                             __instance.targetPlayerWithRotation = playerControllerB;
-                            __instance.SwitchTurretMode(1);
+                            MethodInfo mode_s_method = typ.GetMethod("SwitchTurretMode", BindingFlags.NonPublic | BindingFlags.Instance);
+                            mode_s_method.Invoke(__instance, new object[] { 1 });
+                            //__instance.SwitchTurretMode(1);
                             __instance.SwitchTargetedPlayerClientRpc((int)playerControllerB.playerClientId, setModeToCharging: true);
                         }
                         else
@@ -100,38 +151,49 @@ namespace FairAI.Patches
                             {
                                 __instance.targetPlayerWithRotation = null;
                                 turret.targetWithRotation = enemies[0];
-                                __instance.SwitchTurretMode(1);
+                                MethodInfo mode_s_method = typ.GetMethod("SwitchTurretMode", BindingFlags.NonPublic | BindingFlags.Instance);
+                                mode_s_method.Invoke(__instance, new object[] { 1 });
+                                //__instance.SwitchTurretMode(1);
                                 turret.SwitchedTargetedEnemyClientRpc(__instance, enemies[0], setModeToCharging: true);
                             }
                         }
                     }
                     else
                     {
-                        __instance.turretInterval += Time.deltaTime;
+                        inter_value = inter_type.GetValue(__instance);
+                        inter_type.SetValue(__instance, ((float)inter_value) + Time.deltaTime);
+                        //__instance.turretInterval += Time.deltaTime;
                     }
                     break;
                 case TurretMode.Charging:
-                    if (__instance.turretModeLastFrame != TurretMode.Charging)
+                    mode_last_value = mode_last_type.GetValue(__instance);
+                    if (((TurretMode)mode_last_value) != TurretMode.Charging)
                     {
-                        __instance.turretModeLastFrame = TurretMode.Charging;
-                        __instance.rotatingClockwise = false;
+                        mode_last_type.SetValue(__instance, TurretMode.Charging);
+                        //__instance.turretModeLastFrame = TurretMode.Charging;
+                        rot_cw_type.SetValue(__instance, false);
+                        //__instance.rotatingClockwise = false;
                         __instance.mainAudio.PlayOneShot(__instance.detectPlayerSFX);
                         __instance.berserkAudio.Stop();
                         WalkieTalkie.TransmitOneShotAudio(__instance.mainAudio, __instance.detectPlayerSFX);
                         __instance.rotationSpeed = 95f;
-                        __instance.rotatingSmoothly = false;
-                        __instance.lostLOSTimer = 0f;
+                        rot_s_type.SetValue (__instance, false);
+                        //__instance.rotatingSmoothly = false;
+                        los_timer_type.SetValue (__instance, 0f);
+                        //__instance.lostLOSTimer = 0f;
                         __instance.turretAnimator.SetInteger("TurretMode", 1);
                     }
                     if (!__instance.IsServer)
                     {
                         break;
                     }
-                    if (__instance.turretInterval >= 1.5f)
+                    inter_value = inter_type.GetValue(__instance);
+                    if (((float)inter_value) >= 1.5f)
                     {
-                        __instance.turretInterval = 0f;
+                        inter_type.SetValue(__instance, 0f);
+                        //__instance.turretInterval = 0f;
                         Debug.Log("Charging timer is up, setting to firing mode");
-                        if (!__instance.hasLineOfSight)
+                        if (!(bool)has_los_value)
                         {
                             Debug.Log("hasLineOfSight is false");
                             __instance.targetPlayerWithRotation = null;
@@ -141,19 +203,25 @@ namespace FairAI.Patches
                         }
                         else
                         {
-                            __instance.SwitchTurretMode(2);
+                            MethodInfo mode_s_method = typ.GetMethod("SwitchTurretMode", BindingFlags.NonPublic | BindingFlags.Instance);
+                            mode_s_method.Invoke(__instance, new object[] { 2 });
+                            //__instance.SwitchTurretMode(2);
                             __instance.SetToModeClientRpc(2);
                         }
                     }
                     else
                     {
-                        __instance.turretInterval += Time.deltaTime;
+                        inter_value = inter_type.GetValue(__instance);
+                        inter_type.SetValue(__instance, ((float)inter_value) + Time.deltaTime);
+                        //__instance.turretInterval += Time.deltaTime;
                     }
                     break;
                 case TurretMode.Firing:
-                    if (__instance.turretModeLastFrame != TurretMode.Firing)
+                    mode_last_value = mode_last_type.GetValue(__instance);
+                    if (((TurretMode)mode_last_value) != TurretMode.Firing)
                     {
-                        __instance.turretModeLastFrame = TurretMode.Firing;
+                        mode_last_type.SetValue(__instance, TurretMode.Firing);
+                        //__instance.turretModeLastFrame = TurretMode.Firing;
                         __instance.berserkAudio.Stop();
                         __instance.mainAudio.clip = __instance.firingSFX;
                         __instance.mainAudio.Play();
@@ -161,53 +229,77 @@ namespace FairAI.Patches
                         __instance.farAudio.Play();
                         __instance.bulletParticles.Play(withChildren: true);
                         __instance.bulletCollisionAudio.Play();
-                        if (__instance.fadeBulletAudioCoroutine != null)
+                        fade_cor_value = fade_cor_type.GetValue(__instance);
+                        if (((Coroutine)fade_cor_value) != null)
                         {
-                            __instance.StopCoroutine(__instance.fadeBulletAudioCoroutine);
+                            __instance.StopCoroutine(((Coroutine)fade_cor_value));
                         }
                         __instance.bulletCollisionAudio.volume = 1f;
-                        __instance.rotatingSmoothly = false;
-                        __instance.lostLOSTimer = 0f;
+                        rot_s_type.SetValue(__instance, false);
+                        //__instance.rotatingSmoothly = false;
+                        los_timer_type.SetValue(__instance, 0f);
+                        //__instance.lostLOSTimer = 0f;
                         __instance.turretAnimator.SetInteger("TurretMode", 2);
                     }
-                    if (__instance.turretInterval >= 0.21f)
+                    inter_value = inter_type.GetValue(__instance);
+                    if (((float)inter_value) >= 0.21f)
                     {
-                        __instance.turretInterval = 0f;
+                        inter_type.SetValue(__instance, 0f);
                         Plugin.AttackTargets(__instance.aimPoint.position, __instance.aimPoint.forward, 30f);
-                        __instance.shootRay = new Ray(__instance.aimPoint.position, __instance.aimPoint.forward);
-                        if (Physics.Raycast(__instance.shootRay, out __instance.hit, 30f, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
+                        ray_type.SetValue(__instance, new Ray(__instance.aimPoint.position, __instance.aimPoint.forward));
+                        //__instance.shootRay = new Ray(__instance.aimPoint.position, __instance.aimPoint.forward);
+                        if (Physics.Raycast(((Ray)ray_value), out RaycastHit rayHit, 30f, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
                         {
-                            __instance.bulletCollisionAudio.transform.position = __instance.shootRay.GetPoint(__instance.hit.distance - 0.5f);
+                            hit_type.SetValue(__instance, rayHit);
+                            Ray shoot_ray = (Ray)ray_value;
+                            hit_value = hit_type.GetValue(__instance);
+                            __instance.bulletCollisionAudio.transform.position = shoot_ray.GetPoint(((RaycastHit)hit_value).distance - 0.5f);
                         }
                     }
                     else
                     {
-                        __instance.turretInterval += Time.deltaTime;
+                        inter_value = inter_type.GetValue(__instance);
+                        inter_type.SetValue(__instance, ((float)inter_value) + Time.deltaTime);
+                        //__instance.turretInterval += Time.deltaTime;
                     }
                     break;
                 case TurretMode.Berserk:
-                    if (__instance.turretModeLastFrame != TurretMode.Berserk)
+                    mode_last_value = mode_last_type.GetValue(__instance);
+                    if (((TurretMode)mode_last_value) != TurretMode.Berserk)
                     {
-                        __instance.turretModeLastFrame = TurretMode.Berserk;
+                        mode_last_type.SetValue(__instance, TurretMode.Berserk);
+                        //__instance.turretModeLastFrame = TurretMode.Berserk;
                         __instance.turretAnimator.SetInteger("TurretMode", 1);
-                        __instance.berserkTimer = 1.3f;
+                        ber_timer_type.SetValue(__instance, 1.3f);
+                        //__instance.berserkTimer = 1.3f;
                         __instance.berserkAudio.Play();
                         __instance.rotationSpeed = 77f;
-                        __instance.enteringBerserkMode = true;
-                        __instance.rotatingSmoothly = true;
-                        __instance.lostLOSTimer = 0f;
-                        __instance.wasTargetingPlayerLastFrame = false;
+                        ber_mode_type.SetValue(__instance, true);
+                        //__instance.enteringBerserkMode = true;
+                        rot_s_type.SetValue(__instance, true);
+                        //__instance.rotatingSmoothly = true;
+                        los_timer_type.SetValue(__instance, 0f);
+                        //__instance.lostLOSTimer = 0f;
+                        was_target_type.SetValue(__instance, false);
+                        //__instance.wasTargetingPlayerLastFrame = false;
                         __instance.targetPlayerWithRotation = null;
                         turret.targetWithRotation = null;
                     }
-                    if (__instance.enteringBerserkMode)
+                    ber_mode_value = ber_mode_type.GetValue(__instance);
+                    if (((bool)ber_mode_value))
                     {
-                        __instance.berserkTimer -= Time.deltaTime;
-                        if (__instance.berserkTimer <= 0f)
+                        ber_timer_value = ber_timer_type.GetValue(__instance);
+                        ber_timer_type.SetValue(__instance, ((float)ber_timer_value) - Time.deltaTime);
+                        //__instance.berserkTimer -= Time.deltaTime;
+                        ber_timer_value = ber_timer_type.GetValue(__instance);
+                        if (((float)ber_timer_value) <= 0f)
                         {
-                            __instance.enteringBerserkMode = false;
-                            __instance.rotatingClockwise = true;
-                            __instance.berserkTimer = 9f;
+                            ber_mode_type.SetValue(__instance, false);
+                            //__instance.enteringBerserkMode = false;
+                            rot_cw_type.SetValue(__instance, true);
+                            //__instance.rotatingClockwise = true;
+                            ber_timer_type.SetValue (__instance, 9f);
+                            //__instance.berserkTimer = 9f;
                             __instance.turretAnimator.SetInteger("TurretMode", 2);
                             __instance.mainAudio.clip = __instance.firingSFX;
                             __instance.mainAudio.Play();
@@ -215,46 +307,63 @@ namespace FairAI.Patches
                             __instance.farAudio.Play();
                             __instance.bulletParticles.Play(withChildren: true);
                             __instance.bulletCollisionAudio.Play();
-                            if (__instance.fadeBulletAudioCoroutine != null)
+                            fade_cor_value = fade_cor_type.GetValue(__instance);
+                            if (((Coroutine)fade_cor_value) != null)
                             {
-                                __instance.StopCoroutine(__instance.fadeBulletAudioCoroutine);
+                                __instance.StopCoroutine(((Coroutine)fade_cor_value));
                             }
                             __instance.bulletCollisionAudio.volume = 1f;
                         }
                         break;
                     }
-                    if (__instance.turretInterval >= 0.21f)
+                    inter_value = inter_type.GetValue(__instance);
+                    if (((float)inter_value) >= 0.21f)
                     {
-                        __instance.turretInterval = 0f;
+                        inter_type.SetValue(__instance, 0f);
+                        //__instance.turretInterval = 0f;
                         Plugin.AttackTargets(__instance.aimPoint.position, __instance.aimPoint.forward, 30f);
-                        __instance.shootRay = new Ray(__instance.aimPoint.position, __instance.aimPoint.forward);
-                        if (Physics.Raycast(__instance.shootRay, out __instance.hit, 30f, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
+                        ray_type.SetValue(__instance, new Ray(__instance.aimPoint.position, __instance.aimPoint.forward));
+                        //__instance.shootRay = new Ray(__instance.aimPoint.position, __instance.aimPoint.forward);
+                        ray_value = ray_type.GetValue(__instance);
+                        if (Physics.Raycast(((Ray)ray_value), out RaycastHit rayHit, 30f, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
                         {
-                            __instance.bulletCollisionAudio.transform.position = __instance.shootRay.GetPoint(__instance.hit.distance - 0.5f);
+                            ray_value = ray_type.GetValue(__instance);
+                            hit_type.SetValue(__instance, rayHit);
+                            hit_value = ray_type.GetValue(__instance);
+                            __instance.bulletCollisionAudio.transform.position = ((Ray)ray_value).GetPoint(((RaycastHit)hit_value).distance - 0.5f);
                         }
                     }
                     else
                     {
-                        __instance.turretInterval += Time.deltaTime;
+                        inter_value = inter_type.GetValue(__instance);
+                        inter_type.SetValue(__instance, ((float)inter_value) - Time.deltaTime);
+                        //__instance.turretInterval += Time.deltaTime;
                     }
                     if (__instance.IsServer)
                     {
-                        __instance.berserkTimer -= Time.deltaTime;
-                        if (__instance.berserkTimer <= 0f)
+                        ber_timer_value = ber_timer_type.GetValue(__instance);
+                        ber_timer_type.SetValue(__instance, ((float)ber_timer_value) - Time.deltaTime);
+                        //__instance.berserkTimer -= Time.deltaTime;
+                        ber_timer_value = ber_timer_type.GetValue(__instance);
+                        if (((float)ber_timer_value) <= 0f)
                         {
-                            __instance.SwitchTurretMode(0);
+                            MethodInfo mode_s_method = typ.GetMethod("SwitchTurretMode", BindingFlags.NonPublic | BindingFlags.Instance);
+                            mode_s_method.Invoke(__instance, new object[] { 0 });
+                            //__instance.SwitchTurretMode(0);
                             __instance.SetToModeClientRpc(0);
                         }
                     }
                     break;
             }
-            if (__instance.rotatingClockwise)
+            rot_cw_value = rot_cw_type.GetValue(__instance);
+            if (((bool)rot_cw_value))
             {
                 __instance.turnTowardsObjectCompass.localEulerAngles = new Vector3(-180f, __instance.turretRod.localEulerAngles.y - Time.deltaTime * 20f, 180f);
                 __instance.turretRod.rotation = Quaternion.RotateTowards(__instance.turretRod.rotation, __instance.turnTowardsObjectCompass.rotation, __instance.rotationSpeed * Time.deltaTime);
                 return false;
             }
-            if (__instance.rotatingSmoothly)
+            rot_s_value = rot_s_type.GetValue(__instance);
+            if (((bool)rot_s_value))
             {
                 __instance.turnTowardsObjectCompass.localEulerAngles = new Vector3(-180f, Mathf.Clamp(__instance.targetRotation, 0f - __instance.rotationRange, __instance.rotationRange), 180f);
             }
@@ -264,13 +373,18 @@ namespace FairAI.Patches
 
         public static bool PatchSetTargetToPlayerBody(ref Turret __instance)
         {
+            System.Type typ = typeof(Turret);
+            FieldInfo target_dead_type = typ.GetField("targetingDeadPlayer", BindingFlags.NonPublic | BindingFlags.Instance);
+            var target_dead_value = target_dead_type.GetValue(__instance);
             if (__instance.targetPlayerWithRotation != null)
             {
                 if (__instance.targetPlayerWithRotation.isPlayerDead)
                 {
-                    if (!__instance.targetingDeadPlayer)
+                    target_dead_value = target_dead_type.GetValue(__instance);
+                    if (!(bool)target_dead_value)
                     {
-                        __instance.targetingDeadPlayer = true;
+                        target_dead_type.SetValue(__instance, true);
+                        //__instance.targetingDeadPlayer = true;
                     }
                     if (__instance.targetPlayerWithRotation.deadBody != null)
                     {
@@ -279,20 +393,25 @@ namespace FairAI.Patches
                     FAIR_AI turret = __instance.gameObject.GetComponent<FAIR_AI>();
                     if (turret.targetWithRotation != null)
                     {
-                        if (!__instance.targetingDeadPlayer)
+                        target_dead_value = target_dead_type.GetValue(__instance);
+                        if (!(bool)target_dead_value)
                         {
-                            __instance.targetingDeadPlayer = true;
+                            target_dead_type.SetValue (__instance, true);
+                            //__instance.targetingDeadPlayer = true;
                         }
+                        target_dead_value = target_dead_type.GetValue(__instance);
                         if (!turret.targetWithRotation.GetComponent<EnemyAI>().isEnemyDead)
                         {
-                            __instance.targetingDeadPlayer = false;
+                            target_dead_type.SetValue(__instance, false);
+                            //__instance.targetingDeadPlayer = false;
                             __instance.targetTransform = turret.targetWithRotation.transform;
                         }
                     }
                 }
                 else
                 {
-                    __instance.targetingDeadPlayer = false;
+                    target_dead_type.SetValue(__instance, false);
+                    //__instance.targetingDeadPlayer = false;
                     __instance.targetTransform = __instance.targetPlayerWithRotation.gameplayCamera.transform;
                 }
             }
@@ -301,13 +420,17 @@ namespace FairAI.Patches
                 FAIR_AI turret = __instance.gameObject.GetComponent<FAIR_AI>();
                 if (turret.targetWithRotation != null)
                 {
-                    if (!__instance.targetingDeadPlayer)
+                    target_dead_value = target_dead_type.GetValue(__instance);
+                    if (!(bool)target_dead_value)
                     {
-                        __instance.targetingDeadPlayer = true;
+                        target_dead_type.SetValue(__instance, true);
+                        //__instance.targetingDeadPlayer = true;
                     }
+                    target_dead_value = target_dead_type.GetValue(__instance);
                     if (!turret.targetWithRotation.GetComponent<EnemyAI>().isEnemyDead)
                     {
-                        __instance.targetingDeadPlayer = false;
+                        target_dead_type.SetValue(__instance, false);
+                        //__instance.targetingDeadPlayer = false;
                         __instance.targetTransform = turret.targetWithRotation.transform;
                     }
                 }
@@ -318,7 +441,14 @@ namespace FairAI.Patches
         public static bool PatchTurnTowardsTargetIfHasLOS(ref Turret __instance)
         {
             bool flag = true;
-            if (__instance.targetingDeadPlayer || Vector3.Angle(__instance.targetTransform.position - __instance.centerPoint.position, __instance.forwardFacingPos.forward) > __instance.rotationRange)
+            System.Type typ = typeof(Turret);
+            FieldInfo target_dead_type = typ.GetField("targetingDeadPlayer", BindingFlags.NonPublic | BindingFlags.Instance);
+            var target_dead_value = target_dead_type.GetValue(__instance);
+            FieldInfo has_los_type = typ.GetField("hasLineOfSight", BindingFlags.NonPublic | BindingFlags.Instance);
+            var has_los_value = target_dead_type.GetValue(__instance);
+            FieldInfo los_timer_type = typ.GetField("lostLOSTimer", BindingFlags.NonPublic | BindingFlags.Instance);
+            var los_timer_value = target_dead_type.GetValue(__instance);
+            if (((bool)target_dead_value) || Vector3.Angle(__instance.targetTransform.position - __instance.centerPoint.position, __instance.forwardFacingPos.forward) > __instance.rotationRange)
             {
                 flag = false;
             }
@@ -328,26 +458,35 @@ namespace FairAI.Patches
             }
             if (flag)
             {
-                __instance.hasLineOfSight = true;
-                __instance.lostLOSTimer = 0f;
+                has_los_type.SetValue(__instance, true);
+                //__instance.hasLineOfSight = true;
+                los_timer_type.SetValue(__instance, 0f);
+                //__instance.lostLOSTimer = 0f;
                 __instance.tempTransform.position = __instance.targetTransform.position;
                 __instance.tempTransform.position -= Vector3.up * 0.15f;
                 __instance.turnTowardsObjectCompass.LookAt(__instance.tempTransform);
                 return false;
             }
-            if (__instance.hasLineOfSight)
+            has_los_value = has_los_type.GetValue(__instance);
+            if (((bool)has_los_value))
             {
-                __instance.hasLineOfSight = false;
-                __instance.lostLOSTimer = 0f;
+                has_los_type.SetValue(__instance, false);
+                los_timer_type.SetValue(__instance, 0f);
+                //__instance.hasLineOfSight = false;
+                //__instance.lostLOSTimer = 0f;
             }
             if (!__instance.IsServer)
             {
                 return false;
             }
-            __instance.lostLOSTimer += Time.deltaTime;
-            if (__instance.lostLOSTimer >= 2f)
+            los_timer_value = los_timer_type.GetValue(__instance);
+            los_timer_type.SetValue(__instance, ((float)los_timer_value) + Time.deltaTime);
+            //__instance.lostLOSTimer += Time.deltaTime;
+            los_timer_value = los_timer_type.GetValue(__instance);
+            if (((float)los_timer_value) >= 2f)
             {
-                __instance.lostLOSTimer = 0f;
+                //__instance.lostLOSTimer = 0f;
+                los_timer_type.SetValue(__instance, 0f);
                 Debug.Log("Turret: LOS timer ended on server. checking for new player target");
                 PlayerControllerB playerControllerB = __instance.CheckForPlayersInLineOfSight();
                 List<EnemyAI> enemies = GetActualTargets(__instance, GetTargets(__instance));

@@ -36,15 +36,15 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="BepInEx.BaseLib">
+      <Version>5.4.21</Version>
+    </PackageReference>
     <Reference Include="0Harmony">
       <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Lethal Company\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>
-    <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL" Publicize="true">
+    <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="BepInEx">
-      <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Lethal Company\BepInEx\core\BepInEx.dll</HintPath>
     </Reference>
     <Reference Include="LethalThings">
       <HintPath>..\..\..\..\Microsoft Visual Studio\Custom DLLS\LethalThings.dll</HintPath>
