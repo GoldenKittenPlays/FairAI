@@ -440,6 +440,10 @@ namespace FairAI.Patches
 
         public static bool PatchTurnTowardsTargetIfHasLOS(ref Turret __instance)
         {
+            if (TurnTowardsTargetEnemyIfHasLOS(__instance))
+            {
+                return false;
+            }
             bool flag = true;
             System.Type typ = typeof(Turret);
             FieldInfo target_dead_type = typ.GetField("targetingDeadPlayer", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -501,18 +505,75 @@ namespace FairAI.Patches
                     Debug.Log("Turret: No new player to target; returning to detection mode.");
                     __instance.targetPlayerWithRotation = null;
                     __instance.RemoveTargetedPlayerClientRpc();
-                    FAIR_AI turret = __instance.gameObject.GetComponent<FAIR_AI>();
-                    if (enemies.Any())
-                    {
-                        turret.targetWithRotation = enemies[0];
-                        turret.SwitchedTargetedEnemyClientRpc(__instance, enemies[0]);
-                    }
-                    else
-                    {
-                        turret.targetWithRotation = null;
-                        turret.RemoveTargetedEnemyClientRpc();
-                    }
                 }
+            }
+            return false;
+        }
+
+        public static bool TurnTowardsTargetEnemyIfHasLOS(Turret turret)
+        {
+            bool flag = true;
+            System.Type typ = typeof(Turret);
+            FieldInfo target_dead_type = typ.GetField("targetingDeadPlayer", BindingFlags.NonPublic | BindingFlags.Instance);
+            var target_dead_value = target_dead_type.GetValue(turret);
+            FieldInfo has_los_type = typ.GetField("hasLineOfSight", BindingFlags.NonPublic | BindingFlags.Instance);
+            FieldInfo los_timer_type = typ.GetField("lostLOSTimer", BindingFlags.NonPublic | BindingFlags.Instance);
+            if ((bool)target_dead_value || Vector3.Angle(turret.targetTransform.position - turret.centerPoint.position, turret.forwardFacingPos.forward) > turret.rotationRange)
+            {
+                flag = false;
+            }
+
+            if (Physics.Linecast(turret.aimPoint.position, turret.targetTransform.position, StartOfRound.Instance.collidersAndRoomMask, QueryTriggerInteraction.Ignore))
+            {
+                flag = false;
+            }
+            List<EnemyAI> list = GetActualTargets(turret, GetTargets(turret));
+            if (flag && list != null && list.Any())
+            {
+                has_los_type.SetValue(turret, true);
+                //__instance.hasLineOfSight = true;
+                los_timer_type.SetValue(turret, 0f);
+                //__instance.lostLOSTimer = 0f;
+                if (turret.GetComponent<FAIR_AI>() != null)
+                {
+                    FAIR_AI ai = turret.GetComponent<FAIR_AI>();
+                    if (ai.targetWithRotation == null)
+                    {
+                        ai.targetWithRotation = list[0];
+                    }
+                    turret.tempTransform.position = ai.targetWithRotation.transform.position;
+                    turret.tempTransform.position -= Vector3.up * 0.15f;
+                    turret.turnTowardsObjectCompass.LookAt(turret.tempTransform);
+                }
+                return flag;
+            }
+
+            var has_los_value = has_los_type.GetValue(turret);
+            if (((bool)has_los_value))
+            {
+                has_los_type.SetValue(turret, false);
+                los_timer_type.SetValue(turret, 0f);
+                //__instance.hasLineOfSight = false;
+                //__instance.lostLOSTimer = 0f;
+            }
+            if (!turret.IsServer)
+            {
+                return false;
+            }
+
+            //lostLOSTimer += Time.deltaTime;
+            FAIR_AI aim = turret.gameObject.GetComponent<FAIR_AI>();
+            List<EnemyAI> enemies = GetActualTargets(turret, GetTargets(turret));
+            if (enemies.Any())
+            {
+                aim.targetWithRotation = enemies[0];
+                aim.SwitchedTargetedEnemyClientRpc(turret, enemies[0]);
+                return true;
+            }
+            else
+            {
+                aim.targetWithRotation = null;
+                aim.RemoveTargetedEnemyClientRpc();
             }
             return false;
         }
@@ -520,25 +581,40 @@ namespace FairAI.Patches
         public static List<EnemyAI> GetActualTargets(Turret turret, List<EnemyAI> targets)
         {
             List<EnemyAI> enemies = new List<EnemyAI>();
-            List<EnemyAI> newTargets = new List<EnemyAI>();
-            newTargets.RemoveAll(t => t == null);
-            if (newTargets.Any())
+            List<EnemyAI> newTargets = targets;
+            if (newTargets != null)
             {
-                newTargets.ForEach(target =>
+                newTargets.RemoveAll(t => t == null);
+                if (newTargets.Any())
                 {
-                    EnemyAI enemy = target.GetComponent<EnemyAICollisionDetect>().mainScript;
-                    if (enemy == null)
+                    foreach (EnemyAI target in newTargets)
                     {
-                        enemy = target.GetComponent<EnemyAI>();
-                    }
-                    if (enemy != null)
-                    {
-                        if ((!enemy.isEnemyDead && Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", enemy.enemyType.enemyName)))
+                        if (target != null)
                         {
-                            enemies.Add(enemy);
+                            if ((!target.isEnemyDead && Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", target.enemyType.enemyName)))
+                            {
+                                enemies.Add(target);
+                            }
                         }
                     }
-                });
+                    /*
+                    newTargets.ForEach(target =>
+                    {
+                        EnemyAI enemy = target.GetComponent<EnemyAICollisionDetect>().mainScript;
+                        if (enemy == null)
+                        {
+                            enemy = target.GetComponent<EnemyAI>();
+                        }
+                        if (enemy != null)
+                        {
+                            if ((!enemy.isEnemyDead && Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", enemy.enemyType.enemyName)))
+                            {
+                                enemies.Add(enemy);
+                            }
+                        }
+                    });
+                    */
+                }
             }
             return enemies;
         }
@@ -551,14 +627,15 @@ namespace FairAI.Patches
             {
                 targets.ForEach(e =>
                 {
-                    EnemyAI enemy = e.GetComponent<EnemyAICollisionDetect>().mainScript;
-                    if (enemy == null)
+                    EnemyAICollisionDetect enemy = e.GetComponent<EnemyAICollisionDetect>();
+                    EnemyAI enemyAI = enemy.GetComponent<EnemyAI>();
+                    if (enemy != null)
                     {
-                        enemy = e.GetComponent<EnemyAI>();
+                        enemyAI = enemy.mainScript;
                     }
-                    if (enemy != null && Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", enemy.enemyType.enemyName))
+                    if (enemyAI != null && Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", enemyAI.enemyType.enemyName))
                     {
-                        en.Add(enemy);
+                        en.Add(enemyAI);
                     }
                 });
             }
@@ -589,10 +666,16 @@ namespace FairAI.Patches
 
                     if (!Physics.Raycast(turret.aimPoint.position, dirToTarget, dstToTarget, ~Plugin.enemyMask))
                     {
-                        if (target.GetComponent<EnemyAICollisionDetect>() != null || target.GetComponent<EnemyAI>() != null)
+                        if (target.GetComponent<EnemyAICollisionDetect>() != null)
                         {
-                            if (Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", target.GetComponent<EnemyAICollisionDetect>().mainScript.enemyType.enemyName) ||
-                                Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", target.GetComponent<EnemyAI>().enemyType.enemyName))
+                            if (Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", target.GetComponent<EnemyAICollisionDetect>().mainScript.enemyType.enemyName)) 
+                            {
+                                targets.Add(target);
+                            }
+                        }
+                        if (target.GetComponent<EnemyAI>() != null)
+                        {
+                            if (Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", target.GetComponent<EnemyAI>().enemyType.enemyName))
                             {
                                 targets.Add(target);
                             }

@@ -4,7 +4,6 @@ namespace FairAI.Patches
 {
     internal class MineAIPatch
     {
-
         public static void PatchOnTriggerEnter(ref Landmine __instance, Collider other, ref float ___pressMineDebounceTimer)
         {
             EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();

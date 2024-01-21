@@ -254,29 +254,13 @@ namespace FairAI
                                     {
                                         if (((NutcrackerEnemyAI)enemy.mainScript).currentBehaviourStateIndex > 0)
                                         {
-                                            if (enemy.mainScript.creatureAnimator != null)
-                                            {
-                                                enemy.mainScript.creatureAnimator.SetTrigger(Animator.StringToHash("damage"));
-                                            }
-                                            enemy.mainScript.enemyHP -= damage;
-                                            if (!(enemy.mainScript.enemyHP > 0) || enemy.mainScript.IsOwner)
-                                            {
-                                                enemy.mainScript.KillEnemyOnOwnerClient(true);
-                                            }
+                                            enemy.mainScript.HitEnemyOnLocalClient(damage);
                                             hits = true;
                                         }
                                     }
                                     else
                                     {
-                                        if (enemy.mainScript.creatureAnimator != null)
-                                        {
-                                            enemy.mainScript.creatureAnimator.SetTrigger(Animator.StringToHash("damage"));
-                                        }
-                                        enemy.mainScript.enemyHP -= damage;
-                                        if (!(enemy.mainScript.enemyHP > 0) || enemy.mainScript.IsOwner)
-                                        {
-                                            enemy.mainScript.KillEnemyOnOwnerClient(true);
-                                        }
+                                        enemy.mainScript.HitEnemyOnLocalClient(damage);
                                         hits = true;
                                     }
                                 }
@@ -299,29 +283,13 @@ namespace FairAI
                                     {
                                         if (((NutcrackerEnemyAI)enemy).currentBehaviourStateIndex > 0)
                                         {
-                                            if (enemy.creatureAnimator != null)
-                                            {
-                                                enemy.creatureAnimator.SetTrigger(Animator.StringToHash("damage"));
-                                            }
-                                            enemy.enemyHP -= damage;
-                                            if (!(enemy.enemyHP > 0) || enemy.IsOwner)
-                                            {
-                                                enemy.KillEnemyOnOwnerClient(true);
-                                            }
+                                            enemy.HitEnemyOnLocalClient(damage);
                                             hits = true;
                                         }
                                     }
                                     else
                                     {
-                                        if (enemy.creatureAnimator != null)
-                                        {
-                                            enemy.creatureAnimator.SetTrigger(Animator.StringToHash("damage"));
-                                        }
-                                        enemy.enemyHP -= damage;
-                                        if (!(enemy.enemyHP > 0) || enemy.IsOwner)
-                                        {
-                                            enemy.KillEnemyOnOwnerClient(true);
-                                        }
+                                        enemy.HitEnemyOnLocalClient(damage);
                                         hits = true;
                                     }
                                 }
@@ -347,29 +315,13 @@ namespace FairAI
                                         {
                                             if (((NutcrackerEnemyAI)enemy.mainScript).currentBehaviourStateIndex > 0)
                                             {
-                                                if (enemy.mainScript.creatureAnimator != null)
-                                                {
-                                                    enemy.mainScript.creatureAnimator.SetTrigger(Animator.StringToHash("damage"));
-                                                }
-                                                enemy.mainScript.enemyHP -= damage;
-                                                if (!(enemy.mainScript.enemyHP > 0) || enemy.mainScript.IsOwner)
-                                                {
-                                                    enemy.mainScript.KillEnemyOnOwnerClient(true);
-                                                }
+                                                enemy.mainScript.HitEnemyOnLocalClient(damage);
                                                 hits = true;
                                             }
                                         }
                                         else
                                         {
-                                            if (enemy.mainScript.creatureAnimator != null)
-                                            {
-                                                enemy.mainScript.creatureAnimator.SetTrigger(Animator.StringToHash("damage"));
-                                            }
-                                            enemy.mainScript.enemyHP -= damage;
-                                            if (!(enemy.mainScript.enemyHP > 0) || enemy.mainScript.IsOwner)
-                                            {
-                                                enemy.mainScript.KillEnemyOnOwnerClient(true);
-                                            }
+                                            enemy.mainScript.HitEnemyOnLocalClient(damage);
                                             hits = true;
                                         }
                                     }
