@@ -22,6 +22,10 @@ namespace FairAI.Patches
         }
         public static bool PatchUpdate(ref Turret __instance)
         {
+            if (!Plugin.AllowFairness() && !(__instance.transform.position.y > -80f))
+            {
+                return false;
+            }
             FAIR_AI turret = __instance.gameObject.GetComponent<FAIR_AI>();
             System.Type typ = typeof(Turret);
             if (!__instance.turretActive)

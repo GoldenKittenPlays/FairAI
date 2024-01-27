@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using Unity.Netcode;
+using UnityEngine;
 
 namespace FairAI.Patches
 {
@@ -6,30 +8,61 @@ namespace FairAI.Patches
     {
         public static void PatchOnTriggerEnter(ref Landmine __instance, Collider other, ref float ___pressMineDebounceTimer)
         {
-            EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
-            if (component != null && !component.mainScript.isEnemyDead)
+            if (Plugin.AllowFairness() && !(__instance.transform.position.y > -80f))
             {
-                if (Plugin.CanMob("ExplodeAllMobs", ".Mine", component.mainScript.enemyType.enemyName.ToUpper()))
+                EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
+                if (component != null && !component.mainScript.isEnemyDead)
                 {
-                    ___pressMineDebounceTimer = 0.5f;
-                    __instance.PressMineServerRpc();
+                    if (Plugin.CanMob("ExplodeAllMobs", ".Mine", component.mainScript.enemyType.enemyName.ToUpper()))
+                    {
+                        ___pressMineDebounceTimer = 0.5f;
+                        __instance.PressMineServerRpc();
+                    }
                 }
             }
         }
 
         public static void PatchOnTriggerExit(ref Landmine __instance, Collider other, ref bool ___sendingExplosionRPC)
         {
-            EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
-            if (component != null && !component.mainScript.isEnemyDead)
+            if (Plugin.AllowFairness() && !(__instance.transform.position.y > -80f))
             {
-                if (Plugin.CanMob("ExplodeAllMobs", ".Mine", component.mainScript.enemyType.enemyName.ToUpper()))
+                EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
+                if (component != null && !component.mainScript.isEnemyDead)
                 {
-                    if (!__instance.hasExploded)
+                    if (Plugin.CanMob("ExplodeAllMobs", ".Mine", component.mainScript.enemyType.enemyName.ToUpper()))
                     {
-                        __instance.SetOffMineAnimation();
-                        ___sendingExplosionRPC = true;
-                        __instance.ExplodeMineServerRpc();
+                        if (!__instance.hasExploded)
+                        {
+                            __instance.SetOffMineAnimation();
+                            ___sendingExplosionRPC = true;
+                            __instance.ExplodeMineServerRpc();
+                        }
                     }
+                }
+            }
+        }
+
+
+        public static void DetonatePatch(ref Landmine __instance)
+        {
+            if (!(__instance == null))
+            {
+                __instance.StartCoroutine(WaitForUpdate(1.5f, __instance));
+            }
+        }
+
+        public static IEnumerator WaitForUpdate(float waitTime, Landmine mine)
+        {
+            yield return new WaitForSeconds(waitTime);
+            if (!(mine == null))
+            {
+                if (mine.GetComponent<NetworkObject>() != null)
+                {
+                    mine.GetComponent<NetworkObject>().Despawn(true);
+                }
+                else
+                {
+                    Object.Destroy(mine.gameObject);
                 }
             }
         }
@@ -51,11 +84,11 @@ namespace FairAI.Patches
                     {
                         if (num2 < killRange)
                         {
-                            enemy.mainScript.KillEnemyOnOwnerClient(true);
+                            enemy.mainScript.HitEnemyOnLocalClient(enemy.mainScript.enemyHP);
                         }
                         else if (num2 < damageRange)
                         {
-                            enemy.mainScript.HitEnemyOnLocalClient(2);
+                            enemy.mainScript.HitEnemyOnLocalClient(Mathf.RoundToInt(enemy.mainScript.enemyHP / 2));
                         }
                     }
                 }

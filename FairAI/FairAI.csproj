@@ -98,6 +98,7 @@
     <Compile Include="BoombaTimer.cs" />
     <Compile Include="FAIR_AI.cs" />
     <Compile Include="Patches\BoombaPatch.cs" />
+    <Compile Include="Patches\EnemyAIPatch.cs" />
     <Compile Include="Patches\MineAIPatch.cs" />
     <Compile Include="Patches\RoundManagerPatch.cs" />
     <Compile Include="Patches\StartOfRoundPatch.cs" />

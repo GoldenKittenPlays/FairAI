@@ -15,7 +15,7 @@ using UnityEngine.AI;
 namespace FairAI
 {
     [BepInPlugin(modGUID, modName, modVersion)]
-    [BepInDependency("Evaisa-LethalThings-0.8.8", BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency("Evaisa-LethalThings-0.9.4", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
         private const string modGUID = "GoldenKitten.FairAI", modName = "Fair AI", modVersion = "1.0.0";
@@ -30,6 +30,7 @@ namespace FairAI
 
         public static List<Item> items;
 
+        public static bool playersEnteredInside = false;
         public static int wallsAndEnemyLayerMask = 524288;
         public static int enemyMask = (1 << 19);
         public static int allHittablesMask;
@@ -47,18 +48,48 @@ namespace FairAI
             logger.LogInfo("Fair AI initiated!");
             CreateHarmonyPatch(harmony, typeof(RoundManager), "Start", null, typeof(RoundManagerPatch), nameof(RoundManagerPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Start", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchStart), false);
+            CreateHarmonyPatch(harmony, typeof(StartOfRound), "Update", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchUpdate), false);
             CreateHarmonyPatch(harmony, typeof(Turret), "Start", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchUpdate), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchSetTargetToPlayerBody), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchTurnTowardsTargetIfHasLOS), true);
-            CreateHarmonyPatch(harmony, typeof(Landmine), nameof(Landmine.SpawnExplosion), new[] { typeof(Vector3), typeof(bool), typeof(float), typeof(float) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
+            CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", new[] { typeof(Vector3), typeof(bool), typeof(float), typeof(float) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerEnter", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerEnter), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerExit", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerExit), false);
+            CreateHarmonyPatch(harmony, typeof(Landmine), "Detonate", null, typeof(MineAIPatch), nameof(MineAIPatch.DetonatePatch), false);
             if (FindType("LethalThings.RoombaAI") != null)
             {
                 CreateHarmonyPatch(harmony, FindType("LethalThings.RoombaAI"), "Start", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchStart), false);
                 CreateHarmonyPatch(harmony, FindType("LethalThings.RoombaAI"), "DoAIInterval", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchDoAIInterval), false);
             }
+        }
+
+        public static List<PlayerControllerB> GetActivePlayers()
+        {
+            PlayerControllerB[] players = StartOfRound.Instance.allPlayerScripts;
+            List<PlayerControllerB> list = new List<PlayerControllerB>();
+            foreach (PlayerControllerB val in players)
+            {
+                if ((UnityEngine.Object)(object)val != (UnityEngine.Object)null && !val.isPlayerDead && ((Behaviour)val).isActiveAndEnabled && val.isPlayerControlled)
+                {
+                    list.Add(val);
+                }
+            }
+            return list;
+        }
+
+        public static bool AllowFairness()
+        {
+            if (StartOfRound.Instance != null)
+            {
+                if (Can("CheckForPlayersInside"))
+                {
+                    logger.LogInfo("Players Inside?: " + playersEnteredInside.ToString());
+                    return playersEnteredInside;
+                }
+            }
+            logger.LogInfo("Players Inside Check Skipped!");
+            return true;
         }
 
         public static bool CanMob(string parentIdentifier, string identifier, string mobName)
@@ -77,6 +108,19 @@ namespace FairAI
             }
             return false;
         }
+
+        public static bool Can(string identifier)
+        {
+            foreach (ConfigDefinition entry in Instance.Config.Keys)
+            {
+                if (RemoveInvalidCharacters(entry.Key.ToUpper()).Equals(RemoveInvalidCharacters(identifier.ToUpper())))
+                {
+                    return Instance.Config[entry].BoxedValue.ToString().ToUpper().Equals("TRUE");
+                }
+            }
+            return false;
+        }
+
         public static string RemoveWhitespaces(string source)
         {
             return string.Join("", source.Split(default(string[]), StringSplitOptions.RemoveEmptyEntries));
@@ -135,7 +179,7 @@ namespace FairAI
         {
             if (typeToPatch == null || patchType == null)
             {
-                Plugin.logger.LogInfo("Type is either incorrect or does not exist!");
+                logger.LogInfo("Type is either incorrect or does not exist!");
                 return;
             }
             MethodInfo Method = AccessTools.Method(typeToPatch, methodToPatch, parameters, null);

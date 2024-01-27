@@ -6,7 +6,7 @@ namespace FairAI.Patches
 {
     internal class RoundManagerPatch
     {
-        public static void PatchStart()
+        public static void PatchStart(ref RoundManager __instance)
         {
             //This happens at the end of waiting for entrance teleport spawn
             Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
@@ -39,6 +39,13 @@ namespace FairAI.Patches
                 "TurretDamageAllMobs", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Leave On To Customise Mobs Below Or Turn Off To Make All Mobs Unable To Be Killed By Turrets."); // Description
+            }
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "CheckForPlayersInside")))
+            {
+                ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Mobs", // Section Title
+                "CheckForPlayersInside", // The key of the configuration option in the configuration file
+                                             false, // The default value
+                                             "Whether to check for players inside the dungeon before anything else occurs."); // Description
             }
             foreach (EnemyType enemy in Plugin.enemies)
             {
