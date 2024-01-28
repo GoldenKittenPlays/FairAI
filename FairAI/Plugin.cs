@@ -78,18 +78,65 @@ namespace FairAI
             return list;
         }
 
-        public static bool AllowFairness()
+        public static bool AllowFairness(Vector3 position)
         {
             if (StartOfRound.Instance != null)
             {
                 if (Can("CheckForPlayersInside"))
                 {
-                    logger.LogInfo("Players Inside?: " + playersEnteredInside.ToString());
-                    return playersEnteredInside;
+                    if (IsAPlayersOutside() && (position.y > -80f || StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(position)))
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return playersEnteredInside;
+                    }
                 }
             }
-            logger.LogInfo("Players Inside Check Skipped!");
             return true;
+        }
+
+        public static bool IsAPlayersOutside()
+        {
+            List<PlayerControllerB> list = Plugin.GetActivePlayers();
+            for (int i = 0; i < list.Count; i++)
+            {
+                PlayerControllerB player = list[i];
+                if (!player.isInsideFactory)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public static bool IsAPlayerInsideShip()
+        {
+            List<PlayerControllerB> list = Plugin.GetActivePlayers();
+            for (int i = 0; i < list.Count; i++)
+            {
+                PlayerControllerB player = list[i];
+                if (player.isInHangarShipRoom)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public static bool IsAPlayerInsideDungeon()
+        {
+            List<PlayerControllerB> list = Plugin.GetActivePlayers();
+            for (int i = 0; i < list.Count; i++)
+            {
+                PlayerControllerB player = list[i];
+                if (player.isInsideFactory)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static bool CanMob(string parentIdentifier, string identifier, string mobName)

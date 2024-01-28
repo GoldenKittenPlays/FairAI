@@ -13,7 +13,7 @@ namespace FairAI.Patches
 
         public static void PatchDoAIInterval(ref RoombaAI __instance)
         {
-            if (Plugin.AllowFairness() && !(__instance.transform.position.y > -80f))
+            if (Plugin.AllowFairness(__instance.transform.position))
             {
                 if (Plugin.IsAgentOnNavMesh(__instance.gameObject)
                     && (__instance.currentSearch != null || __instance.movingTowardsTargetPlayer) && (__instance.mineAudio.isPlaying || __instance.mineFarAudio.isPlaying)

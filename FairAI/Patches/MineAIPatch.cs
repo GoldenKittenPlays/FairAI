@@ -8,7 +8,7 @@ namespace FairAI.Patches
     {
         public static void PatchOnTriggerEnter(ref Landmine __instance, Collider other, ref float ___pressMineDebounceTimer)
         {
-            if (Plugin.AllowFairness() && !(__instance.transform.position.y > -80f))
+            if (Plugin.AllowFairness(__instance.transform.position))
             {
                 EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
                 if (component != null && !component.mainScript.isEnemyDead)
@@ -24,7 +24,7 @@ namespace FairAI.Patches
 
         public static void PatchOnTriggerExit(ref Landmine __instance, Collider other, ref bool ___sendingExplosionRPC)
         {
-            if (Plugin.AllowFairness() && !(__instance.transform.position.y > -80f))
+            if (Plugin.AllowFairness(__instance.transform.position))
             {
                 EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
                 if (component != null && !component.mainScript.isEnemyDead)

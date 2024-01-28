@@ -93,20 +93,7 @@ namespace FairAI.Patches
                 }
                 else
                 {
-                    List<PlayerControllerB> list = Plugin.GetActivePlayers();
-                    for (int i = 0; i < list.Count; i++)
-                    {
-                        PlayerControllerB player = list[i];
-                        if (player.isInsideFactory)
-                        {
-                            Plugin.playersEnteredInside = true;
-                            break;
-                        }
-                        else if(i == list.Count - 1 && !player.isInsideFactory)
-                        {
-                            Plugin.playersEnteredInside = false;
-                        }
-                    }
+                    Plugin.playersEnteredInside = Plugin.IsAPlayerInsideDungeon();
                 }
             }
         }
