@@ -45,14 +45,12 @@ namespace FairAI
             harmony = new Harmony(modGUID);
             logger = BepInEx.Logging.Logger.CreateLogSource(modGUID);
             harmony.PatchAll(typeof(Plugin));
-            logger.LogInfo("Fair AI initiated!");
             CreateHarmonyPatch(harmony, typeof(RoundManager), "Start", null, typeof(RoundManagerPatch), nameof(RoundManagerPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Start", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Update", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchUpdate), false);
-            CreateHarmonyPatch(harmony, typeof(Turret), "Start", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchUpdate), true);
-            CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchSetTargetToPlayerBody), true);
-            CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchTurnTowardsTargetIfHasLOS), true);
+            //CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchSetTargetToPlayerBody), true);
+            //CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchTurnTowardsTargetIfHasLOS), true);
             CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", new[] { typeof(Vector3), typeof(bool), typeof(float), typeof(float) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerEnter", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerEnter), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerExit", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerExit), false);
@@ -62,6 +60,7 @@ namespace FairAI
                 CreateHarmonyPatch(harmony, FindType("LethalThings.RoombaAI"), "Start", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchStart), false);
                 CreateHarmonyPatch(harmony, FindType("LethalThings.RoombaAI"), "DoAIInterval", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchDoAIInterval), false);
             }
+            logger.LogInfo("Fair AI initiated!");
         }
 
         public static List<PlayerControllerB> GetActivePlayers()
@@ -271,41 +270,44 @@ namespace FairAI
         {
             List<GameObject> targets = new List<GameObject>();
             Ray ray = new Ray(aimPoint, forward);
-            RaycastHit[] hits = Physics.RaycastAll(ray, range, allHittablesMask, QueryTriggerInteraction.Collide);
+            RaycastHit[] hits = Physics.RaycastAll(ray, range, -5, QueryTriggerInteraction.Collide);
             Array.Sort(hits, (x, y) => x.distance.CompareTo(y.distance));
             Vector3 end = aimPoint + forward * range;
             for (int j = 0; j < hits.Length; j++)
             {
                 GameObject obj = hits[j].transform.gameObject;
-                if (obj.TryGetComponent(out IHittable hittable))
+                Transform hit = hits[j].transform;
+                if (hit.TryGetComponent(out IHittable hittable))
                 {
                     EnemyAI ai = null;
-                    if (hittable is EnemyAICollisionDetect detect) ai = detect.mainScript;
+                    if (hittable is EnemyAICollisionDetect detect)
+                    {
+                        ai = detect.mainScript;
+                        logger.LogInfo("Got Hittable!");
+                    }
                     if (ai != null)
                     {
-                        if (ai.isEnemyDead || ai.enemyHP <= 0 || !ai.enemyType.canDie) continue; // skip dead things
+                        if (!ai.isEnemyDead && ai.enemyHP > 0)
+                        {
+                            logger.LogInfo("Target Found!");
+                            targets.Add(hit.gameObject);
+                        }
                     }
-                    if (hittable is PlayerControllerB) targets.Add(obj);
-                    else if (ai != null) targets.Add(obj);
-                    else continue; // enemy hit something else (webs?)
                     end = hits[j].point;
-                    break;
                 }
                 else
                 {
                     // precaution: hit enemy without hitting hittable (immune to shovels?)
-                    if (hits[j].collider.TryGetComponent(out EnemyAI ai))
+                    if (hit.TryGetComponent(out EnemyAI ai))
                     {
-                        if (!ai.isEnemyDead && ai.enemyHP > 0 && ai.enemyType.canDie)
+                        if (!ai.isEnemyDead && ai.enemyHP > 0)
                         {
+                            logger.LogInfo("Target Found!");
                             targets.Add(ai.gameObject);
                             end = hits[j].point;
-                            break;
                         }
-                        else continue;
                     }
                     end = hits[j].point;
-                    break; // wall or other obstruction
                 }
             }
             return targets;
@@ -325,46 +327,10 @@ namespace FairAI
                 {
                     if (t != null)
                     {
-                        if (t.GetComponent<PlayerControllerB>() != null)
-                        {
-                            PlayerControllerB player = t.GetComponent<PlayerControllerB>();
-                            // grouping player damage also ensures strong hits (3+ pellets) ignore critical damage - 5 is always lethal rather than being critical
-                            int damage = 20;
-                            hits = true;
-                            player.DamagePlayer(damage, true, true, CauseOfDeath.Gunshots, 0, false, forward);
-                        }
-                        else if (t.GetComponent<EnemyAICollisionDetect>() != null)
-                        {
-                            EnemyAICollisionDetect enemy = t.GetComponent<EnemyAICollisionDetect>();
-                            int damage = 1;
-                            if (!enemy.mainScript.isEnemyDead && enemy.mainScript.IsOwner)
-                            {
-                                if (Plugin.CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.mainScript.enemyType.enemyName))
-                                {
-                                    if (enemy.mainScript is NutcrackerEnemyAI)
-                                    {
-                                        if (((NutcrackerEnemyAI)enemy.mainScript).currentBehaviourStateIndex > 0)
-                                        {
-                                            enemy.mainScript.HitEnemyOnLocalClient(damage);
-                                            hits = true;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        enemy.mainScript.HitEnemyOnLocalClient(damage);
-                                        hits = true;
-                                    }
-                                }
-                                else
-                                {
-                                    //enemy.mainScript.HitEnemyOnLocalClient(damage);
-                                    //hits = true;
-                                }
-                            }
-                        }
-                        else if (t.GetComponent<EnemyAI>() != null)
+                        if (t.GetComponent<EnemyAI>() != null)
                         {
                             EnemyAI enemy = t.GetComponent<EnemyAI>();
+                            /*
                             if (enemy.IsOwner)
                             {
                                 int damage = 1;
@@ -390,6 +356,26 @@ namespace FairAI
                                 //enemy.HitEnemyOnLocalClient(damage);
                                 ///hits = true;
                             }
+                            */
+                            logger.LogInfo("Enemy Found!");
+                            int damage = 1;
+                            if (Plugin.CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.enemyType.enemyName))
+                            {
+                                if (enemy is NutcrackerEnemyAI)
+                                {
+                                    if (((NutcrackerEnemyAI)enemy).currentBehaviourStateIndex > 0)
+                                    {
+                                        enemy.HitEnemyOnLocalClient(damage);
+                                        hits = true;
+                                    }
+                                }
+                                else
+                                {
+                                    enemy.HitEnemyOnLocalClient(damage);
+                                    hits = true;
+                                }
+                                logger.LogInfo("Enemy Damaged!");
+                            }
                         }
                         else if (t.GetComponent<IHittable>() != null)
                         {
@@ -397,6 +383,7 @@ namespace FairAI
                             if (hit is EnemyAICollisionDetect)
                             {
                                 EnemyAICollisionDetect enemy = (EnemyAICollisionDetect)hit;
+                                /*
                                 int damage = 1;
                                 if (enemy.mainScript.IsOwner)
                                 {
@@ -422,14 +409,30 @@ namespace FairAI
                                     //enemy.mainScript.HitEnemyOnLocalClient(damage);
                                     ///hits = true;
                                 }
+                                */
+                                logger.LogInfo("Enemy Found!");
+                                int damage = 1;
+                                if (Plugin.CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.mainScript.enemyType.enemyName))
+                                {
+                                    if (enemy.mainScript is NutcrackerEnemyAI)
+                                    {
+                                        if (((NutcrackerEnemyAI)enemy.mainScript).currentBehaviourStateIndex > 0)
+                                        {
+                                            enemy.mainScript.HitEnemyOnLocalClient(damage);
+                                            hits = true;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        enemy.mainScript.HitEnemyOnLocalClient(damage);
+                                        hits = true;
+                                    }
+                                    logger.LogInfo("Enemy Damaged!");
+                                }
                             }
                             else if (hit is PlayerControllerB)
                             {
-                                PlayerControllerB player = (PlayerControllerB)hit;
-                                // grouping player damage also ensures strong hits (3+ pellets) ignore critical damage - 5 is always lethal rather than being critical
-                                int damage = 33;
-                                hits = true;
-                                player.DamagePlayer(damage, true, true, CauseOfDeath.Gunshots, 0, false, forward);
+                                //hits = true;
                             }
                             else
                             {

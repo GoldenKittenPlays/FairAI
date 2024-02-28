@@ -7,14 +7,19 @@ namespace FairAI
     {
         public EnemyAI targetWithRotation;
 
+        private void Awake()
+        {
+            targetWithRotation = null;
+        }
+
         [ClientRpc]
         public void SwitchedTargetedEnemyClientRpc(Turret turret, EnemyAI enemy, bool setModeToCharging = false)
         {
             targetWithRotation = enemy;
             if (setModeToCharging)
             {
-                System.Type typ = typeof(Turret);
-                MethodInfo mode_s_method = typ.GetMethod("SwitchTurretMode", BindingFlags.NonPublic | BindingFlags.Instance);
+                System.Type turretType = typeof(Turret);
+                MethodInfo mode_s_method = turretType.GetMethod("SwitchTurretMode", BindingFlags.NonPublic | BindingFlags.Instance);
                 mode_s_method.Invoke(turret, new object[] { 1 });
                 //turret.SwitchTurretMode(1);
             }
