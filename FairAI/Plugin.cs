@@ -33,7 +33,7 @@ namespace FairAI
         public static List<Item> items;
 
         public const string ltModID = "evaisa.lethalthings";
-        public const string surfacedModID = "SurfacedTeam-Surfaced-1.1.5";
+        public const string surfacedModID = "surfaced";
         public static bool playersEnteredInside = false;
         public static int wallsAndEnemyLayerMask = 524288;
         public static int enemyMask = (1 << 19);
