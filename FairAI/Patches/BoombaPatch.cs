@@ -1,16 +1,33 @@
 ﻿using FairAI.Component;
 using LethalThings;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace FairAI.Patches
 {
-    internal class BoombaPatch
+    public static class BoombaPatch
     {
+        private static bool? _enabled;
+
+        public static bool enabled
+        {
+            get
+            {
+                if (_enabled == null)
+                {
+                    _enabled = BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(Plugin.ltModID);
+                }
+                return (bool)_enabled;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void PatchStart(ref RoombaAI __instance)
         {
             __instance.gameObject.AddComponent<BoombaTimer>();
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void PatchDoAIInterval(ref RoombaAI __instance)
         {
             if (Plugin.AllowFairness(__instance.transform.position))

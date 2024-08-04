@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using HarmonyLib;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using UnityEngine;
 
 namespace FairAI.Patches
@@ -9,6 +11,47 @@ namespace FairAI.Patches
     {
         public static float viewRadius = 16;
         public static float viewAngle = 90;
+
+        /*
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator il)
+        {
+            var codes = new List<CodeInstruction>(instructions);
+            int startIndex = -1;
+            //Label startLabel = il.DefineLabel();
+            for (int i = 0; i < codes.Count - 1; i++) // -1 since we will be checking i + 1
+            {
+                if (codes[i].opcode == OpCodes.Ret && codes[i + 1].opcode == OpCodes.Ldarg_0)
+                {
+                    Plugin.logger.LogInfo("Found Start Code " + i + ": " + codes[i].ToString());
+                    startIndex = i;
+                    //codes[i].labels.Add(startLabel);
+                    break;
+                }
+            }
+            int endIndex = -1;
+            //Label endLabel = il.DefineLabel();
+            for (int i = 0; i < codes.Count - 3; i++) // -1 since we will be checking i + 1
+            {
+                if (CodeInstructionExtensions.StoresField(codes[i], typeof(Turret).GetField("wasTargetingPlayerLastFrame", BindingFlags.NonPublic | BindingFlags.Instance))) 
+                {
+                    if (CodeInstructionExtensions.StoresField(codes[i + 3], typeof(Turret).GetField("turretMode")))
+                    {
+                        Plugin.logger.LogInfo("Found End Code " + (i + 3) + ": " + codes[i + 3].ToString());
+                        endIndex = i + 3;
+                        break;
+                    }
+                }
+            }
+            if (startIndex > -1 && endIndex > -1)
+            {
+                codes.RemoveRange(startIndex, endIndex - startIndex);
+                Plugin.logger.LogInfo("Removed Original Turret Targeting Code!");
+            }
+            Plugin.logger.LogInfo("Removal Complete!");
+            return codes.AsEnumerable();
+        }
+        */
+
         public static void PatchUpdate(ref Turret __instance)
         {
             if (!(__instance == null))
@@ -20,16 +63,56 @@ namespace FairAI.Patches
                     {
                         turret = __instance.gameObject.AddComponent<FAIR_AI>();
                     }
+                    System.Type turretType = typeof(Turret);
+                    FieldInfo wasTargetingPlayerLastFrame = turretType.GetField("wasTargetingPlayerLastFrame", BindingFlags.NonPublic | BindingFlags.Instance);
+                    FieldInfo hasLineOfSight = turretType.GetField("hasLineOfSight", BindingFlags.NonPublic | BindingFlags.Instance);
+                    /*
+                    if (__instance.targetPlayerWithRotation != null || turret.targetWithRotation != null)
+                    {
+                        if (!(bool)wasTargetingPlayerLastFrame.GetValue(__instance))
+                        {
+                            wasTargetingPlayerLastFrame.SetValue(__instance, true);
+                            if (__instance.turretMode == TurretMode.Detection)
+                            {
+                                __instance.turretMode = TurretMode.Charging;
+                            }
+                        }
+                        MethodInfo SetTargetToPlayerBody = turretType.GetMethod("SetTargetToPlayerBody", BindingFlags.NonPublic | BindingFlags.Instance);
+                        SetTargetToPlayerBody.Invoke(__instance, new object[] { });
+                        MethodInfo TurnTowardsTargetIfHasLOS = turretType.GetMethod("TurnTowardsTargetIfHasLOS", BindingFlags.NonPublic | BindingFlags.Instance);
+                        TurnTowardsTargetIfHasLOS.Invoke(__instance, new object[] { });
+                    }
+                    else if ((bool)wasTargetingPlayerLastFrame.GetValue(__instance))
+                    {
+                        wasTargetingPlayerLastFrame.SetValue(__instance, false);
+                        __instance.turretMode = TurretMode.Detection;
+                    }
+                    */
                     if (!(turret == null))
                     {
-                        System.Type turretType = typeof(Turret);
                         FieldInfo turretInterval = turretType.GetField("turretInterval", BindingFlags.NonPublic | BindingFlags.Instance);
                         switch (__instance.turretMode)
                         {
+                            case TurretMode.Charging:
+                                if ((float)turretInterval.GetValue(__instance) >= 1.5f)
+                                {
+                                    Debug.Log("Charging timer is up, setting to firing mode");
+                                    if (!(bool)hasLineOfSight.GetValue(__instance))
+                                    {
+                                        Debug.Log("hasLineOfSight is false");
+                                        turret.targetWithRotation = null;
+                                        turret.RemoveTargetedEnemyClientRpc();
+                                    }
+                                    else
+                                    {
+                                        __instance.turretMode = TurretMode.Firing;
+                                        __instance.SetToModeClientRpc(2);
+                                    }
+                                }
+                                break;
                             case TurretMode.Firing:
                                 if ((float)turretInterval.GetValue(__instance) >= 0.21f)
                                 {
-                                    Plugin.logger.LogInfo("Turret Firing!");
                                     //turretInterval.SetValue(__instance, 0f);
                                     //List<EnemyAICollisionDetect> enemies = GetActualTargets(__instance);
                                     //if (enemies.Any())
@@ -43,7 +126,6 @@ namespace FairAI.Patches
                             case TurretMode.Berserk:
                                 if ((float)turretInterval.GetValue(__instance) >= 0.21f)
                                 {
-                                    Plugin.logger.LogInfo("Turret Beserk!");
                                     ///turretInterval.SetValue(__instance, 0f);
                                     //List<EnemyAICollisionDetect> enemies = GetActualTargets(__instance);
                                     //if (enemies.Any())
@@ -66,12 +148,10 @@ namespace FairAI.Patches
             {
                 System.Type typ = typeof(Turret);
                 FieldInfo target_dead_type = typ.GetField("targetingDeadPlayer", BindingFlags.NonPublic | BindingFlags.Instance);
-                var target_dead_value = target_dead_type.GetValue(__instance);
                 FAIR_AI turret = __instance.gameObject.GetComponent<FAIR_AI>();
                 if (turret.targetWithRotation != null)
                 {
-                    target_dead_value = target_dead_type.GetValue(__instance);
-                    if (!(bool)target_dead_value)
+                    if (!(bool)target_dead_type.GetValue(__instance))
                     {
                         target_dead_type.SetValue(__instance, true);
                         //__instance.targetingDeadPlayer = true;
@@ -229,12 +309,10 @@ namespace FairAI.Patches
                         if (target.GetComponent<EnemyAICollisionDetect>() != null)
                         {
                             targets.Add(target);
-                            Plugin.logger.LogInfo("Visible target added!");
                         }
                         else if (target.GetComponent<EnemyAI>() != null)
                         {
                             targets.Add(target);
-                            Plugin.logger.LogInfo("Visible target added!");
                         }
                     }
                 }

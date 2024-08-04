@@ -4,6 +4,7 @@ using BepInEx.Logging;
 using FairAI.Patches;
 using GameNetcodeStuff;
 using HarmonyLib;
+using LethalThings;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,10 +16,11 @@ using UnityEngine.AI;
 namespace FairAI
 {
     [BepInPlugin(modGUID, modName, modVersion)]
-    [BepInDependency("Evaisa-LethalThings-0.9.4", BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency("evaisa.lethalthings", BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency("surfaced", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
-        private const string modGUID = "GoldenKitten.FairAI", modName = "Fair AI", modVersion = "1.0.0";
+        private const string modGUID = "GoldenKitten.FairAI", modName = "Fair AI", modVersion = "1.3.7";
 
         private Harmony harmony = new Harmony(modGUID);
 
@@ -30,6 +32,8 @@ namespace FairAI
 
         public static List<Item> items;
 
+        public const string ltModID = "evaisa.lethalthings";
+        public const string surfacedModID = "SurfacedTeam-Surfaced-1.1.5";
         public static bool playersEnteredInside = false;
         public static int wallsAndEnemyLayerMask = 524288;
         public static int enemyMask = (1 << 19);
@@ -48,17 +52,26 @@ namespace FairAI
             CreateHarmonyPatch(harmony, typeof(RoundManager), "Start", null, typeof(RoundManagerPatch), nameof(RoundManagerPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Start", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Update", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchUpdate), false);
+            //CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.Transpiler), true, true);
             CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchUpdate), true);
-            //CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchSetTargetToPlayerBody), true);
-            //CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchTurnTowardsTargetIfHasLOS), true);
-            CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", new[] { typeof(Vector3), typeof(bool), typeof(float), typeof(float) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
+            CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchSetTargetToPlayerBody), true);
+            CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchTurnTowardsTargetIfHasLOS), true);
+            //Vector3, bool, float, float, int, float, GameObject, bool
+            CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", new[] { typeof(Vector3) , typeof(bool), typeof(float), typeof(float), typeof(int), typeof(float), typeof(GameObject), typeof(bool) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerEnter", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerEnter), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerExit", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerExit), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "Detonate", null, typeof(MineAIPatch), nameof(MineAIPatch.DetonatePatch), false);
-            if (FindType("LethalThings.RoombaAI") != null)
+            if (BoombaPatch.enabled)
             {
-                CreateHarmonyPatch(harmony, FindType("LethalThings.RoombaAI"), "Start", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchStart), false);
-                CreateHarmonyPatch(harmony, FindType("LethalThings.RoombaAI"), "DoAIInterval", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchDoAIInterval), false);
+                //harmony, FindType("LethalThings.RoombaAI")
+                CreateHarmonyPatch(harmony, typeof(RoombaAI), "Start", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchStart), false);
+                CreateHarmonyPatch(harmony, typeof(RoombaAI), "DoAIInterval", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchDoAIInterval), false);
+                logger.LogInfo("LethalThings Component Initiated!");
+            }
+            if (SurfacedMinePatch.enabled)
+            {
+                CreateHarmonyPatch(harmony, typeof(Seamine), "OnTriggerEnter", new[] { typeof(Collider)}, typeof(SurfacedMinePatch), nameof(SurfacedMinePatch.PatchOnTriggerEnter), false);
+                logger.LogInfo("Surfaced Component Initiated!");
             }
             logger.LogInfo("Fair AI initiated!");
         }
@@ -220,8 +233,8 @@ namespace FairAI
             }
             return null;
         }
-
-        public static void CreateHarmonyPatch(Harmony harmony, Type typeToPatch, string methodToPatch, Type[] parameters, Type patchType, string patchMethod, bool isPrefix)
+         
+        public static void CreateHarmonyPatch(Harmony harmony, Type typeToPatch, string methodToPatch, Type[] parameters, Type patchType, string patchMethod, bool isPrefix, bool isTranspiler = false)
         {
             if (typeToPatch == null || patchType == null)
             {
@@ -230,14 +243,20 @@ namespace FairAI
             }
             MethodInfo Method = AccessTools.Method(typeToPatch, methodToPatch, parameters, null);
             MethodInfo Patch_Method = AccessTools.Method(patchType, patchMethod, null, null);
-
-            if (isPrefix)
+            if (isTranspiler)
             {
-                harmony.Patch(Method, new HarmonyMethod(Patch_Method), null, null, null, null);
+                harmony.Patch(Method, null, null, new HarmonyMethod(Patch_Method), null, null);
             }
             else
             {
-                harmony.Patch(Method, null, new HarmonyMethod(Patch_Method), null, null, null);
+                if (isPrefix)
+                {
+                    harmony.Patch(Method, new HarmonyMethod(Patch_Method), null, null, null, null);
+                }
+                else
+                {
+                    harmony.Patch(Method, null, new HarmonyMethod(Patch_Method), null, null, null);
+                }
             }
         }
 
@@ -283,13 +302,11 @@ namespace FairAI
                     if (hittable is EnemyAICollisionDetect detect)
                     {
                         ai = detect.mainScript;
-                        logger.LogInfo("Got Hittable!");
                     }
                     if (ai != null)
                     {
                         if (!ai.isEnemyDead && ai.enemyHP > 0)
                         {
-                            logger.LogInfo("Target Found!");
                             targets.Add(hit.gameObject);
                         }
                     }
@@ -302,7 +319,6 @@ namespace FairAI
                     {
                         if (!ai.isEnemyDead && ai.enemyHP > 0)
                         {
-                            logger.LogInfo("Target Found!");
                             targets.Add(ai.gameObject);
                             end = hits[j].point;
                         }
@@ -357,7 +373,6 @@ namespace FairAI
                                 ///hits = true;
                             }
                             */
-                            logger.LogInfo("Enemy Found!");
                             int damage = 1;
                             if (Plugin.CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.enemyType.enemyName))
                             {
@@ -374,7 +389,6 @@ namespace FairAI
                                     enemy.HitEnemyOnLocalClient(damage);
                                     hits = true;
                                 }
-                                logger.LogInfo("Enemy Damaged!");
                             }
                         }
                         else if (t.GetComponent<IHittable>() != null)
@@ -410,7 +424,6 @@ namespace FairAI
                                     ///hits = true;
                                 }
                                 */
-                                logger.LogInfo("Enemy Found!");
                                 int damage = 1;
                                 if (Plugin.CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.mainScript.enemyType.enemyName))
                                 {
@@ -427,7 +440,6 @@ namespace FairAI
                                         enemy.mainScript.HitEnemyOnLocalClient(damage);
                                         hits = true;
                                     }
-                                    logger.LogInfo("Enemy Damaged!");
                                 }
                             }
                             else if (hit is PlayerControllerB)

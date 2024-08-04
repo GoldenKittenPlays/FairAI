@@ -46,8 +46,12 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
-    <Reference Include="LethalThings">
-      <HintPath>..\..\..\..\Microsoft Visual Studio\Custom DLLS\LethalThings.dll</HintPath>
+    <Reference Include="LethalThings, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\plugins\Evaisa-LethalThings\LethalThings\LethalThings.dll</HintPath>
+    </Reference>
+    <Reference Include="Surfaced">
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\plugins\SurfacedTeam-Surfaced\Surfaced.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -102,6 +106,7 @@
     <Compile Include="Patches\MineAIPatch.cs" />
     <Compile Include="Patches\RoundManagerPatch.cs" />
     <Compile Include="Patches\StartOfRoundPatch.cs" />
+    <Compile Include="Patches\SurfaceMinePatch.cs" />
     <Compile Include="Patches\TurretAIPatch.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

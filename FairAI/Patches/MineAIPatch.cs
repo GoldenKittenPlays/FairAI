@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Reflection;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -42,7 +44,6 @@ namespace FairAI.Patches
             }
         }
 
-
         public static void DetonatePatch(ref Landmine __instance)
         {
             if (!(__instance == null))
@@ -62,33 +63,51 @@ namespace FairAI.Patches
                 }
                 else
                 {
-                    Object.Destroy(mine.gameObject);
+                    UnityEngine.Object.Destroy(mine.gameObject);
                 }
             }
         }
 
-        public static void PatchSpawnExplosion(Vector3 explosionPosition, bool spawnExplosionEffect = false, float killRange = 1f, float damageRange = 1f)
+        public static void PatchSpawnExplosion(Vector3 explosionPosition, bool spawnExplosionEffect = false, float killRange = 1f, float damageRange = 1f, int nonLethalDamage = 50, float physicsForce = 0f, GameObject overridePrefab = null, bool goThroughCar = false)
         {
-            Collider[] array = Physics.OverlapSphere(explosionPosition, 6f, 2621448, QueryTriggerInteraction.Collide);
-            for (int i = 0; i < array.Length; i++)
+            if (explosionPosition != null)
             {
-                float num2 = Vector3.Distance(explosionPosition, array[i].transform.position);
-                if (num2 > 4f && Physics.Linecast(explosionPosition, array[i].transform.position + Vector3.up * 0.3f, 256, QueryTriggerInteraction.Ignore))
+                Collider[] array = Physics.OverlapSphere(explosionPosition, 6f, 2621448, QueryTriggerInteraction.Collide);
+                for (int i = 0; i < array.Length; i++)
                 {
-                    continue;
-                }
-                if (array[i].gameObject.GetComponent<EnemyAICollisionDetect>() != null)
-                {
-                    EnemyAICollisionDetect enemy = array[i].gameObject.GetComponent<EnemyAICollisionDetect>();
-                    if (enemy != null && enemy.mainScript.IsOwner && !enemy.mainScript.isEnemyDead)
+                    float num2 = Vector3.Distance(explosionPosition, array[i].transform.position);
+                    if (num2 > 4f && Physics.Linecast(explosionPosition, array[i].transform.position + Vector3.up * 0.3f, 256, QueryTriggerInteraction.Ignore))
                     {
-                        if (num2 < killRange)
+                        continue;
+                    }
+                    if (array[i].gameObject.GetComponent<Seamine>() != null)
+                    {
+                        Seamine mine = array[i].gameObject.GetComponent<Seamine>();
+                        Type seaMineType = typeof(Seamine);
+                        FieldInfo mineActivated = seaMineType.GetField("mineActivated", BindingFlags.NonPublic | BindingFlags.Instance);
+                        if (mine.hasExploded || !(bool)mineActivated.GetValue(mine))
                         {
-                            enemy.mainScript.HitEnemyOnLocalClient(enemy.mainScript.enemyHP);
+                            return;
                         }
-                        else if (num2 < damageRange)
+                        if (Plugin.AllowFairness(mine.transform.position))
                         {
-                            enemy.mainScript.HitEnemyOnLocalClient(Mathf.RoundToInt(enemy.mainScript.enemyHP / 2));
+                            MethodInfo TriggerMineOnLocalClientByExiting = seaMineType.GetMethod("TriggerMineOnLocalClientByExiting", BindingFlags.NonPublic | BindingFlags.Instance);
+                            TriggerMineOnLocalClientByExiting.Invoke(mine, new object[] { });
+                        }
+                    }
+                    if (array[i].gameObject.GetComponent<EnemyAICollisionDetect>() != null)
+                    {
+                        EnemyAICollisionDetect enemy = array[i].gameObject.GetComponent<EnemyAICollisionDetect>();
+                        if (enemy != null && enemy.mainScript.IsOwner && !enemy.mainScript.isEnemyDead)
+                        {
+                            if (num2 < killRange)
+                            {
+                                enemy.mainScript.HitEnemyOnLocalClient(enemy.mainScript.enemyHP);
+                            }
+                            else if (num2 < damageRange)
+                            {
+                                enemy.mainScript.HitEnemyOnLocalClient(Mathf.RoundToInt(enemy.mainScript.enemyHP / 2));
+                            }
                         }
                     }
                 }
