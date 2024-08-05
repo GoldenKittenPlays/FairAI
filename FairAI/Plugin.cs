@@ -32,10 +32,14 @@ namespace FairAI
 
         public static List<Item> items;
 
+        public static Assembly surfacedAssembly;
+
         public const string ltModID = "evaisa.lethalthings";
         public const string surfacedModID = "Surfaced";
 
         public static bool playersEnteredInside = false;
+        public static bool surfacedEnabled = false;
+        public static bool lethalThingsEnabled = false;
 
         public static int wallsAndEnemyLayerMask = 524288;
         public static int enemyMask = (1 << 19);
@@ -49,6 +53,7 @@ namespace FairAI
             {
                 Instance = this;
             }
+            surfacedAssembly = null;
             harmony = new Harmony(modGUID);
             logger = BepInEx.Logging.Logger.CreateLogSource(modGUID);
             harmony.PatchAll(typeof(Plugin));
@@ -118,6 +123,7 @@ namespace FairAI
                         {
                             CreateHarmonyPatch(harmony, lethalThingsType, "Start", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchStart), false);
                             CreateHarmonyPatch(harmony, lethalThingsType, "DoAIInterval", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchDoAIInterval), false);
+                            lethalThingsEnabled = true;
                             logger.LogInfo("LethalThings Component Initiated!");
                         }
                     }
@@ -139,7 +145,6 @@ namespace FairAI
             {
                 // Get all loaded assemblies
                 Assembly[] loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
-                Assembly surfacedAssembly = null;
 
                 // Find the LethalThings assembly
                 foreach (var assembly in loadedAssemblies)
@@ -159,6 +164,7 @@ namespace FairAI
                         if (SurfacedMinePatch.enabled)
                         {
                             CreateHarmonyPatch(harmony, surfacedType, "OnTriggerEnter", new[] { typeof(Collider) }, typeof(SurfacedMinePatch), nameof(SurfacedMinePatch.PatchOnTriggerEnter), false);
+                            surfacedEnabled = true;
                             logger.LogInfo("Surfaced Component Initiated!");
                         }
                     }

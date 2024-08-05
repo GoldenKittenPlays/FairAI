@@ -82,21 +82,29 @@ namespace FairAI.Patches
                     {
                         continue;
                     }
-                    if (SurfacedMinePatch.enabled)
+                    if (Plugin.surfacedEnabled)
                     {
-                        if (array[i].gameObject.GetComponent<Seamine>() != null)
+                        if (Plugin.surfacedAssembly != null)
                         {
-                            Seamine mine = array[i].gameObject.GetComponent<Seamine>();
-                            Type seaMineType = typeof(Seamine);
-                            FieldInfo mineActivated = seaMineType.GetField("mineActivated", BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (mine.hasExploded || !(bool)mineActivated.GetValue(mine))
+                            Type surfacedType = Plugin.surfacedAssembly.GetType("Seamine");
+
+                            if (surfacedType != null)
                             {
-                                return;
-                            }
-                            if (Plugin.AllowFairness(mine.transform.position))
-                            {
-                                MethodInfo TriggerMineOnLocalClientByExiting = seaMineType.GetMethod("TriggerMineOnLocalClientByExiting", BindingFlags.NonPublic | BindingFlags.Instance);
-                                TriggerMineOnLocalClientByExiting.Invoke(mine, new object[] { });
+                                if (array[i].gameObject.GetComponent(surfacedType) != null)
+                                {
+                                    UnityEngine.Component mine = array[i].gameObject.GetComponent(surfacedType);
+                                    FieldInfo mineActivated = surfacedType.GetField("mineActivated", BindingFlags.NonPublic | BindingFlags.Instance);
+                                    FieldInfo hasExploded = surfacedType.GetField("hasExploded", BindingFlags.Public | BindingFlags.Instance);
+                                    if (!(bool)hasExploded.GetValue(mine) || !(bool)mineActivated.GetValue(mine))
+                                    {
+                                        return;
+                                    }
+                                    if (Plugin.AllowFairness(mine.transform.position))
+                                    {
+                                        MethodInfo TriggerMineOnLocalClientByExiting = surfacedType.GetMethod("TriggerMineOnLocalClientByExiting", BindingFlags.NonPublic | BindingFlags.Instance);
+                                        TriggerMineOnLocalClientByExiting.Invoke(mine, new object[] { });
+                                    }
+                                }
                             }
                         }
                     }
