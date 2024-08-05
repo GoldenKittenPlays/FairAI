@@ -1,5 +1,4 @@
 ﻿using FairAI.Component;
-using LethalThings;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
@@ -22,13 +21,13 @@ namespace FairAI.Patches
         }
 
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-        public static void PatchStart(ref RoombaAI __instance)
+        public static void PatchStart(ref LethalThings.RoombaAI __instance)
         {
             __instance.gameObject.AddComponent<BoombaTimer>();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-        public static void PatchDoAIInterval(ref RoombaAI __instance)
+        public static void PatchDoAIInterval(ref LethalThings.RoombaAI __instance)
         {
             if (Plugin.AllowFairness(__instance.transform.position))
             {

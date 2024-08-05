@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -68,6 +69,7 @@ namespace FairAI.Patches
             }
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void PatchSpawnExplosion(Vector3 explosionPosition, bool spawnExplosionEffect = false, float killRange = 1f, float damageRange = 1f, int nonLethalDamage = 50, float physicsForce = 0f, GameObject overridePrefab = null, bool goThroughCar = false)
         {
             if (explosionPosition != null)
@@ -80,19 +82,22 @@ namespace FairAI.Patches
                     {
                         continue;
                     }
-                    if (array[i].gameObject.GetComponent<Seamine>() != null)
+                    if (SurfacedMinePatch.enabled)
                     {
-                        Seamine mine = array[i].gameObject.GetComponent<Seamine>();
-                        Type seaMineType = typeof(Seamine);
-                        FieldInfo mineActivated = seaMineType.GetField("mineActivated", BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (mine.hasExploded || !(bool)mineActivated.GetValue(mine))
+                        if (array[i].gameObject.GetComponent<Seamine>() != null)
                         {
-                            return;
-                        }
-                        if (Plugin.AllowFairness(mine.transform.position))
-                        {
-                            MethodInfo TriggerMineOnLocalClientByExiting = seaMineType.GetMethod("TriggerMineOnLocalClientByExiting", BindingFlags.NonPublic | BindingFlags.Instance);
-                            TriggerMineOnLocalClientByExiting.Invoke(mine, new object[] { });
+                            Seamine mine = array[i].gameObject.GetComponent<Seamine>();
+                            Type seaMineType = typeof(Seamine);
+                            FieldInfo mineActivated = seaMineType.GetField("mineActivated", BindingFlags.NonPublic | BindingFlags.Instance);
+                            if (mine.hasExploded || !(bool)mineActivated.GetValue(mine))
+                            {
+                                return;
+                            }
+                            if (Plugin.AllowFairness(mine.transform.position))
+                            {
+                                MethodInfo TriggerMineOnLocalClientByExiting = seaMineType.GetMethod("TriggerMineOnLocalClientByExiting", BindingFlags.NonPublic | BindingFlags.Instance);
+                                TriggerMineOnLocalClientByExiting.Invoke(mine, new object[] { });
+                            }
                         }
                     }
                     if (array[i].gameObject.GetComponent<EnemyAICollisionDetect>() != null)

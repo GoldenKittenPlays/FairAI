@@ -4,23 +4,23 @@ using BepInEx.Logging;
 using FairAI.Patches;
 using GameNetcodeStuff;
 using HarmonyLib;
-using LethalThings;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AI;
 
 namespace FairAI
 {
     [BepInPlugin(modGUID, modName, modVersion)]
-    [BepInDependency("evaisa.lethalthings", BepInDependency.DependencyFlags.SoftDependency)]
-    [BepInDependency("surfaced", BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency(ltModID, BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency(surfacedModID, BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
-        private const string modGUID = "GoldenKitten.FairAI", modName = "Fair AI", modVersion = "1.3.7";
+        private const string modGUID = "GoldenKitten.FairAI", modName = "Fair AI", modVersion = "1.3.8";
 
         private Harmony harmony = new Harmony(modGUID);
 
@@ -33,14 +33,17 @@ namespace FairAI
         public static List<Item> items;
 
         public const string ltModID = "evaisa.lethalthings";
-        public const string surfacedModID = "surfaced";
+        public const string surfacedModID = "Surfaced";
+
         public static bool playersEnteredInside = false;
+
         public static int wallsAndEnemyLayerMask = 524288;
         public static int enemyMask = (1 << 19);
         public static int allHittablesMask;
+
         static float onMeshThreshold = 3;
 
-        private void Awake() 
+        private async void Awake() 
         {
             if (Instance == null)
             {
@@ -61,19 +64,118 @@ namespace FairAI
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerEnter", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerEnter), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerExit", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerExit), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "Detonate", null, typeof(MineAIPatch), nameof(MineAIPatch.DetonatePatch), false);
-            if (BoombaPatch.enabled)
-            {
-                //harmony, FindType("LethalThings.RoombaAI")
-                CreateHarmonyPatch(harmony, typeof(RoombaAI), "Start", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchStart), false);
-                CreateHarmonyPatch(harmony, typeof(RoombaAI), "DoAIInterval", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchDoAIInterval), false);
-                logger.LogInfo("LethalThings Component Initiated!");
-            }
-            if (SurfacedMinePatch.enabled)
-            {
-                CreateHarmonyPatch(harmony, typeof(Seamine), "OnTriggerEnter", new[] { typeof(Collider)}, typeof(SurfacedMinePatch), nameof(SurfacedMinePatch.PatchOnTriggerEnter), false);
-                logger.LogInfo("Surfaced Component Initiated!");
-            }
+            await WaitForProcess(1);
             logger.LogInfo("Fair AI initiated!");
+        }
+
+        public static async Task<IEnumerable<int>> WaitForProcess(int waitTime)
+        {
+            await Task.Delay(waitTime);
+            bool done = false;
+            while (!done)
+            {
+                await Instance.DelayedInitialization();
+                done = true;
+            }
+            return new List<int>() { };
+        }
+
+        private async Task DelayedInitialization()
+        {
+            await Task.Run(() =>
+            {
+                TryLoadLethalThings();
+                TryLoadSurfaced();
+                logger.LogInfo("Optional Components initiated!");
+            });
+        }
+
+        private void TryLoadLethalThings()
+        {
+            try
+            {
+                // Get all loaded assemblies
+                Assembly[] loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+                Assembly lethalThingsAssembly = null;
+
+                // Find the LethalThings assembly
+                foreach (var assembly in loadedAssemblies)
+                {
+                    if (assembly.GetName().Name == "LethalThings")
+                    {
+                        lethalThingsAssembly = assembly;
+                        break;
+                    }
+                }
+
+                if (lethalThingsAssembly != null)
+                {
+                    Type lethalThingsType = lethalThingsAssembly.GetType("LethalThings.RoombaAI");
+
+                    if (lethalThingsType != null)
+                    {
+                        if (BoombaPatch.enabled)
+                        {
+                            CreateHarmonyPatch(harmony, lethalThingsType, "Start", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchStart), false);
+                            CreateHarmonyPatch(harmony, lethalThingsType, "DoAIInterval", null, typeof(BoombaPatch), nameof(BoombaPatch.PatchDoAIInterval), false);
+                            logger.LogInfo("LethalThings Component Initiated!");
+                        }
+                    }
+                }
+                else
+                {
+                    logger.LogWarning("LethalThings assembly not found. Skipping optional patch.");
+                }
+            }
+            catch (Exception e)
+            {
+                logger.LogError($"An error occurred while trying to apply patches for LethalThings: {e.Message}");
+            }
+        }
+
+        private void TryLoadSurfaced()
+        {
+            try
+            {
+                // Get all loaded assemblies
+                Assembly[] loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+                Assembly surfacedAssembly = null;
+
+                // Find the LethalThings assembly
+                foreach (var assembly in loadedAssemblies)
+                {
+                    if (assembly.GetName().Name == "Surfaced")
+                    {
+                        surfacedAssembly = assembly;
+                        break;
+                    }
+                }
+                if (surfacedAssembly != null)
+                {
+                    Type surfacedType = surfacedAssembly.GetType("Seamine");
+
+                    if (surfacedType != null)
+                    {
+                        if (SurfacedMinePatch.enabled)
+                        {
+                            CreateHarmonyPatch(harmony, surfacedType, "OnTriggerEnter", new[] { typeof(Collider) }, typeof(SurfacedMinePatch), nameof(SurfacedMinePatch.PatchOnTriggerEnter), false);
+                            logger.LogInfo("Surfaced Component Initiated!");
+                        }
+                    }
+                    else
+                    {
+                        logger.LogInfo("Surfaced Component Not Found!");
+                    }
+                }
+                else
+                {
+                    logger.LogWarning("Surfaced assembly not found. Skipping optional patch.");
+                }
+            }
+            catch (Exception e)
+            {
+                logger.LogError($"An error occurred while trying to apply patches for Surfaced: {e.Message}");
+            }
         }
 
         public static List<PlayerControllerB> GetActivePlayers()

@@ -15,7 +15,7 @@ namespace FairAI.Patches
             {
                 if (_enabled == null)
                 {
-                    _enabled = BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(Plugin.ltModID);
+                    _enabled = BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(Plugin.surfacedModID);
                 }
                 return (bool)_enabled;
             }

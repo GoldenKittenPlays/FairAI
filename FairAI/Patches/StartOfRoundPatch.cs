@@ -1,6 +1,4 @@
 ﻿using BepInEx.Configuration;
-using GameNetcodeStuff;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 

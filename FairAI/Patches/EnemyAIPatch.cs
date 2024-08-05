@@ -1,17 +1,12 @@
 ﻿using GameNetcodeStuff;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
-using static Unity.Networking.Transport.NetworkEvent;
 
 namespace FairAI.Patches
 {
     internal class EnemyAIPatch
     {
+        /*
         public static void DoAIIntervalPatch(ref EnemyAI __instance)
         {
             if (__instance is ForestGiantAI)
@@ -26,7 +21,6 @@ namespace FairAI.Patches
                 {
                     case 1:
                         giant.investigating = false;
-                        /*
                         giant.hasBegunInvestigating = false;
                         if (giant.roamPlanet.inProgress)
                         {
@@ -53,7 +47,6 @@ namespace FairAI.Patches
 
                             giant.SetMovingTowardsTargetPlayer(giant.chasingPlayer);
                         }
-                        */
                         break;
                 }
             }
@@ -102,5 +95,6 @@ namespace FairAI.Patches
             }
             return true;
         }
+        */
     }
 }
