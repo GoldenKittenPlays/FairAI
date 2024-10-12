@@ -1,11 +1,14 @@
-﻿using System.Reflection;
+﻿using System.Collections.Generic;
+using System.Reflection;
 using Unity.Netcode;
+using UnityEngine;
 
 namespace FairAI
 {
     internal class FAIR_AI : NetworkBehaviour
     {
         public EnemyAI targetWithRotation;
+        public Dictionary<int, GameObject> targets;
 
         private void Awake()
         {

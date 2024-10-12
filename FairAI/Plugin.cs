@@ -62,8 +62,9 @@ namespace FairAI
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Update", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchUpdate), false);
             //CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.Transpiler), true, true);
             CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchUpdate), true);
-            CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchSetTargetToPlayerBody), true);
-            CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchTurnTowardsTargetIfHasLOS), true);
+            CreateHarmonyPatch(harmony, typeof(Turret), "CheckForPlayersInLineOfSight", new[] { typeof(float), typeof(bool) }, typeof(TurretAIPatch), nameof(TurretAIPatch.CheckForTargetsInLOS), true);
+            CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.SetTargetToEnemyBody), true);
+            CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.TurnTowardsTargetEnemyIfHasLOS), true);
             //Vector3, bool, float, float, int, float, GameObject, bool
             CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", new[] { typeof(Vector3) , typeof(bool), typeof(float), typeof(float), typeof(int), typeof(float), typeof(GameObject), typeof(bool) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerEnter", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerEnter), false);
@@ -436,6 +437,27 @@ namespace FairAI
             }
             return targets;
             //VisualiseShot(shotgunPosition, end);
+        }
+
+        public static List<EnemyAICollisionDetect> GetEnemyTargets(List<GameObject> originalTargets)
+        {
+            List<EnemyAICollisionDetect> hits = new List<EnemyAICollisionDetect>();
+            originalTargets.ForEach(t =>
+            {
+                if (t != null)
+                {
+                    if (t.GetComponent<IHittable>() != null)
+                    {
+                        IHittable hit = t.GetComponent<IHittable>();
+                        if (hit is EnemyAICollisionDetect)
+                        {
+                            EnemyAICollisionDetect enemy = (EnemyAICollisionDetect)hit;
+                            hits.Add(enemy);
+                        }
+                    }
+                }
+            });
+            return hits;
         }
 
         public static bool HitTargets(List<GameObject> targets, Vector3 forward)
