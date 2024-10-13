@@ -22,6 +22,28 @@ namespace FairAI.Patches
         }
 
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        public static void PatchBerthaOnTriggerEnter(ref Bertha __instance, Collider other)
+        {
+            Type berthaType = typeof(Bertha);
+            if (__instance.hasExploded)
+            {
+                return;
+            }
+            if (Plugin.AllowFairness(__instance.transform.position))
+            {
+                EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
+                if (component != null && !component.mainScript.isEnemyDead)
+                {
+                    if (Plugin.CanMob("ExplodeAllMobs", ".Mine", component.mainScript.enemyType.enemyName.ToUpper()))
+                    {
+                        MethodInfo TriggerMineOnLocalClientByExiting = berthaType.GetMethod("TriggerMineOnLocalClientByExiting", BindingFlags.NonPublic | BindingFlags.Instance);
+                        TriggerMineOnLocalClientByExiting.Invoke(__instance, new object[] { -1 });
+                    }
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void PatchOnTriggerEnter(ref Seamine __instance, Collider other)
         {
             Type seaMineType = typeof(Seamine);
