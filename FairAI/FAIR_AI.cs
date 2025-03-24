@@ -1,11 +1,14 @@
-﻿using System.Reflection;
+﻿using System.Collections.Generic;
+using System.Reflection;
 using Unity.Netcode;
+using UnityEngine;
 
 namespace FairAI
 {
-    internal class FAIR_AI : NetworkBehaviour
+    public class FAIR_AI : NetworkBehaviour
     {
         public EnemyAI targetWithRotation;
+        public Dictionary<int, GameObject> targets;
 
         private void Awake()
         {
@@ -20,7 +23,7 @@ namespace FairAI
             {
                 System.Type turretType = typeof(Turret);
                 MethodInfo mode_s_method = turretType.GetMethod("SwitchTurretMode", BindingFlags.NonPublic | BindingFlags.Instance);
-                mode_s_method.Invoke(turret, new object[] { 1 });
+                mode_s_method.Invoke(turret, new object[] { 2 });
                 //turret.SwitchTurretMode(1);
             }
         }

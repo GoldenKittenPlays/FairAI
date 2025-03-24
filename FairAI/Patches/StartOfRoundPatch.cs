@@ -12,6 +12,21 @@ namespace FairAI.Patches
             Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
             Plugin.items = Resources.FindObjectsOfTypeAll(typeof(Item)).Cast<Item>().Where(i => i != null).ToList();
             Plugin.allHittablesMask = StartOfRound.Instance.collidersRoomMaskDefaultAndPlayers | 2621448 | Plugin.enemyMask;
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("TurretConfig", "Enemy Damage")))
+            {
+                ConfigEntry<float> tempEntry = Plugin.Instance.Config.Bind("TurretConfig", // Section Title
+                "Enemy Damage", // The key of the configuration option in the configuration file
+                                             1f, // The default value
+                                             "Damage Turrets will Do To Enemies"); // Description
+            }
+
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("TurretConfig", "Player Damage")))
+            {
+                ConfigEntry<float> tempEntry = Plugin.Instance.Config.Bind("TurretConfig", // Section Title
+                "Player Damage", // The key of the configuration option in the configuration file
+                                             50f, // The default value
+                                             "Damage Turrets will Do To Players"); // Description
+            }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "ExplodeAllMobs")))
             {
                 ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Mobs", // Section Title
@@ -25,6 +40,20 @@ namespace FairAI.Patches
                 "BoombaAllMobs", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Leave On To Customise Mobs Below Or Turn Off To Make All Mobs Unable To Set Off Boombas."); // Description
+            }
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "SeamineAllMobs")))
+            {
+                ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Mobs", // Section Title
+                "SeamineAllMobs", // The key of the configuration option in the configuration file
+                                             true, // The default value
+                                             "Leave On To Customise Mobs Below Or Turn Off To Make All Mobs Unable To Set Off Seamines."); // Description
+            }
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "BerthaAllMobs")))
+            {
+                ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Mobs", // Section Title
+                "BerthaAllMobs", // The key of the configuration option in the configuration file
+                                             true, // The default value
+                                             "Leave On To Customise Mobs Below Or Turn Off To Make All Mobs Unable To Set Off Big Berthas."); // Description
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "TurretTargetAllMobs")))
             {
@@ -57,12 +86,26 @@ namespace FairAI.Patches
                                              true, // The default value
                                              "Does it set off the landmine or not?"); // Description
                 }
+                if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", mobName + ".Seamine")))
+                {
+                    ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Mobs", // The section under which the option is shown
+                                             mobName + ".Seamine", // The key of the configuration option in the configuration file
+                                             true, // The default value
+                                             "Does it set off the Surfaced Seamine or not?"); // Description
+                }
+                if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", mobName + ".Bertha")))
+                {
+                    ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Mobs", // The section under which the option is shown
+                                             mobName + ".Bertha", // The key of the configuration option in the configuration file
+                                             true, // The default value
+                                             "Does it set off the Surfaced Big Bertha or not?"); // Description
+                }
                 if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", mobName + ".Boomba")))
                 {
                     ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Mobs", // The section under which the option is shown
                                              mobName + ".Boomba", // The key of the configuration option in the configuration file
                                              true, // The default value
-                                             "Does it set off the boomba or not?"); // Description
+                                             "Does it set off the LethalThings Boomba or not?"); // Description
                 }
                 if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", mobName + ".Turret Target")))
                 {

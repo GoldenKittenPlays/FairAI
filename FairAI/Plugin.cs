@@ -47,7 +47,7 @@ namespace FairAI
 
         static float onMeshThreshold = 3;
 
-        private async void Awake() 
+        private async void Awake()
         {
             if (Instance == null)
             {
@@ -62,10 +62,11 @@ namespace FairAI
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Update", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchUpdate), false);
             //CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.Transpiler), true, true);
             CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchUpdate), true);
-            CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchSetTargetToPlayerBody), true);
-            CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchTurnTowardsTargetIfHasLOS), true);
+            CreateHarmonyPatch(harmony, typeof(Turret), "CheckForPlayersInLineOfSight", new[] { typeof(float), typeof(bool) }, typeof(TurretAIPatch), nameof(TurretAIPatch.CheckForTargetsInLOS), true);
+            CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.SetTargetToEnemyBody), true);
+            CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.TurnTowardsTargetEnemyIfHasLOS), true);
             //Vector3, bool, float, float, int, float, GameObject, bool
-            CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", new[] { typeof(Vector3) , typeof(bool), typeof(float), typeof(float), typeof(int), typeof(float), typeof(GameObject), typeof(bool) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
+            CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", new[] { typeof(Vector3), typeof(bool), typeof(float), typeof(float), typeof(int), typeof(float), typeof(GameObject), typeof(bool) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerEnter", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerEnter), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerExit", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerExit), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "Detonate", null, typeof(MineAIPatch), nameof(MineAIPatch.DetonatePatch), false);
@@ -158,19 +159,33 @@ namespace FairAI
                 if (surfacedAssembly != null)
                 {
                     Type surfacedType = surfacedAssembly.GetType("Seamine");
-
+                    Type berthaType = surfacedAssembly.GetType("Bertha");
                     if (surfacedType != null)
                     {
                         if (SurfacedMinePatch.enabled)
                         {
                             CreateHarmonyPatch(harmony, surfacedType, "OnTriggerEnter", new[] { typeof(Collider) }, typeof(SurfacedMinePatch), nameof(SurfacedMinePatch.PatchOnTriggerEnter), false);
                             surfacedEnabled = true;
-                            logger.LogInfo("Surfaced Component Initiated!");
+                            logger.LogInfo("Surfaced Component Seamine Initiated!");
                         }
                     }
                     else
                     {
-                        logger.LogInfo("Surfaced Component Not Found!");
+                        logger.LogInfo("Surfaced Component Seamine Not Found!");
+                    }
+
+                    if (berthaType != null)
+                    {
+                        if (SurfacedMinePatch.enabled)
+                        {
+                            CreateHarmonyPatch(harmony, berthaType, "OnTriggerEnter", new[] { typeof(Collider) }, typeof(SurfacedMinePatch), nameof(SurfacedMinePatch.PatchBerthaOnTriggerEnter), false);
+                            surfacedEnabled = true;
+                            logger.LogInfo("Surfaced Component Bertha Initiated!");
+                        }
+                    }
+                    else
+                    {
+                        logger.LogInfo("Surfaced Component Bertha Not Found!");
                     }
                 }
                 else
@@ -266,7 +281,7 @@ namespace FairAI
             {
                 foreach (ConfigDefinition entry in Instance.Config.Keys)
                 {
-                    if (RemoveInvalidCharacters(entry.Key.ToUpper()).Equals(RemoveInvalidCharacters(mob + identifier.ToUpper())))
+                    if (RemoveInvalidCharacters(entry.Key.ToUpper()).Equals(RemoveInvalidCharacters(mob + identifier).ToUpper()))
                     {
                         return Instance.Config[entry].BoxedValue.ToString().ToUpper().Equals("TRUE");
                     }
@@ -286,6 +301,19 @@ namespace FairAI
                 }
             }
             return false;
+        }
+
+        public static int GetInt(string parentIdentifier, string identifier)
+        {
+            try
+            {
+                int.TryParse(Instance.Config[parentIdentifier, identifier].BoxedValue.ToString(), out int result);
+                return result;
+            }
+            catch
+            {
+                return 1;
+            }
         }
 
         public static string RemoveWhitespaces(string source)
@@ -341,7 +369,7 @@ namespace FairAI
             }
             return null;
         }
-         
+
         public static void CreateHarmonyPatch(Harmony harmony, Type typeToPatch, string methodToPatch, Type[] parameters, Type patchType, string patchMethod, bool isPrefix, bool isTranspiler = false)
         {
             if (typeToPatch == null || patchType == null)
@@ -388,12 +416,12 @@ namespace FairAI
             return false;
         }
 
-        public static bool AttackTargets(Vector3 aimPoint, Vector3 forward, float range)
+        public static bool AttackTargets(FAIR_AI turret_ai, Vector3 aimPoint, Vector3 forward, float range)
         {
-            return HitTargets(GetTargets(aimPoint, forward, range), forward);
+            return HitTargets(GetTargets(turret_ai, aimPoint, forward, range), forward);
         }
 
-        public static List<GameObject> GetTargets(Vector3 aimPoint, Vector3 forward, float range)
+        public static List<GameObject> GetTargets(FAIR_AI turret_ai, Vector3 aimPoint, Vector3 forward, float range)
         {
             List<GameObject> targets = new List<GameObject>();
             Ray ray = new Ray(aimPoint, forward);
@@ -418,6 +446,10 @@ namespace FairAI
                             targets.Add(hit.gameObject);
                         }
                     }
+                    if (!(hittable is EnemyAICollisionDetect) && !(hittable is PlayerControllerB))
+                    {
+                        hittable.Hit(1, end);
+                    }
                     end = hits[j].point;
                 }
                 else
@@ -436,6 +468,27 @@ namespace FairAI
             }
             return targets;
             //VisualiseShot(shotgunPosition, end);
+        }
+
+        public static List<EnemyAICollisionDetect> GetEnemyTargets(List<GameObject> originalTargets)
+        {
+            List<EnemyAICollisionDetect> hits = new List<EnemyAICollisionDetect>();
+            originalTargets.ForEach(t =>
+            {
+                if (t != null)
+                {
+                    if (t.GetComponent<IHittable>() != null)
+                    {
+                        IHittable hit = t.GetComponent<IHittable>();
+                        if (hit is EnemyAICollisionDetect)
+                        {
+                            EnemyAICollisionDetect enemy = (EnemyAICollisionDetect)hit;
+                            hits.Add(enemy);
+                        }
+                    }
+                }
+            });
+            return hits;
         }
 
         public static bool HitTargets(List<GameObject> targets, Vector3 forward)
@@ -481,8 +534,8 @@ namespace FairAI
                                 ///hits = true;
                             }
                             */
-                            int damage = 1;
-                            if (Plugin.CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.enemyType.enemyName))
+                            int damage = GetInt("TurretConfig", "Enemy Damage");
+                            if (CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.enemyType.enemyName))
                             {
                                 if (enemy is NutcrackerEnemyAI)
                                 {
@@ -532,8 +585,8 @@ namespace FairAI
                                     ///hits = true;
                                 }
                                 */
-                                int damage = 1;
-                                if (Plugin.CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.mainScript.enemyType.enemyName))
+                                int damage = GetInt("TurretConfig", "Enemy Damage");
+                                if (CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.mainScript.enemyType.enemyName))
                                 {
                                     if (enemy.mainScript is NutcrackerEnemyAI)
                                     {
