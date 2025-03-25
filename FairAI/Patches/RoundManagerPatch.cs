@@ -27,6 +27,13 @@ namespace FairAI.Patches
                                              50f, // The default value
                                              "Damage Turrets will Do To Players"); // Description
             }
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("TurretConfig", "HitOtherTurrets")))
+            {
+                ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("TurretConfig", // Section Title
+                "HitOtherTurrets", // The key of the configuration option in the configuration file
+                                             false, // The default value
+                                             "If turrets can hit other turrets when firing.(Does not make them target other turrets)"); // Description
+            }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "ExplodeAllMobs")))
             {
                 ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Mobs", // Section Title

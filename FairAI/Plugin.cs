@@ -326,6 +326,19 @@ namespace FairAI
             }
         }
 
+        public static bool GetBool(string parentIdentifier, string identifier)
+        {
+            string result = RemoveInvalidCharacters(Instance.Config[parentIdentifier, identifier].BoxedValue.ToString()).ToUpper();
+            if (result.Equals("TRUE"))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public static string RemoveWhitespaces(string source)
         {
             return string.Join("", source.Split(default(string[]), StringSplitOptions.RemoveEmptyEntries));
@@ -458,7 +471,17 @@ namespace FairAI
                     }
                     if (!(hittable is EnemyAICollisionDetect) && !(hittable is PlayerControllerB))
                     {
-                        hittable.Hit(1, end);
+                        if (!(hittable is Turret))
+                        {
+                            hittable.Hit(1, end);
+                        }
+                        else
+                        {
+                            if (GetBool("TurretConfig", "HitOtherTurrets"))
+                            {
+                                hittable.Hit(1, end);
+                            }
+                        }
                     }
                     end = hits[j].point;
                 }
@@ -619,8 +642,19 @@ namespace FairAI
                             }
                             else
                             {
-                                hit.Hit(1, forward, null, true);
-                                hits = true;
+                                if (!(hit is Turret))
+                                {
+                                    hit.Hit(1, forward, null, true);
+                                    hits = true;
+                                }
+                                else
+                                {
+                                    if (GetBool("TurretConfig", "HitOtherTurrets"))
+                                    {
+                                        hit.Hit(1, forward, null, true);
+                                        hits = true;
+                                    }
+                                }
                             }
                         }
                     }
