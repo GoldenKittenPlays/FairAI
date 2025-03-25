@@ -60,12 +60,10 @@ namespace FairAI
             CreateHarmonyPatch(harmony, typeof(RoundManager), "Start", null, typeof(RoundManagerPatch), nameof(RoundManagerPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Start", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Update", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchUpdate), false);
-            //CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.Transpiler), true, true);
             CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchUpdate), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "CheckForPlayersInLineOfSight", new[] { typeof(float), typeof(bool) }, typeof(TurretAIPatch), nameof(TurretAIPatch.CheckForTargetsInLOS), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.SetTargetToEnemyBody), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.TurnTowardsTargetEnemyIfHasLOS), true);
-            //Vector3, bool, float, float, int, float, GameObject, bool
             CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", new[] { typeof(Vector3), typeof(bool), typeof(float), typeof(float), typeof(int), typeof(float), typeof(GameObject), typeof(bool) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerEnter", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerEnter), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerExit", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerExit), false);
@@ -219,13 +217,16 @@ namespace FairAI
             {
                 if (Can("CheckForPlayersInside"))
                 {
-                    if (IsAPlayersOutside() && (position.y > -80f || StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(position)))
+                    if (StartOfRound.Instance.shipHasLanded)
                     {
-                        return true;
-                    }
-                    else
-                    {
-                        return playersEnteredInside;
+                        if (IsAPlayersOutside() && (position.y > -80f || StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(position)))
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            return playersEnteredInside;
+                        }
                     }
                 }
             }
@@ -234,13 +235,16 @@ namespace FairAI
 
         public static bool IsAPlayersOutside()
         {
-            List<PlayerControllerB> list = Plugin.GetActivePlayers();
-            for (int i = 0; i < list.Count; i++)
+            if (StartOfRound.Instance.shipHasLanded)
             {
-                PlayerControllerB player = list[i];
-                if (!player.isInsideFactory)
+                List<PlayerControllerB> list = Plugin.GetActivePlayers();
+                for (int i = 0; i < list.Count; i++)
                 {
-                    return true;
+                    PlayerControllerB player = list[i];
+                    if (!player.isInsideFactory)
+                    {
+                        return true;
+                    }
                 }
             }
             return false;
@@ -248,13 +252,16 @@ namespace FairAI
 
         public static bool IsAPlayerInsideShip()
         {
-            List<PlayerControllerB> list = Plugin.GetActivePlayers();
-            for (int i = 0; i < list.Count; i++)
+            if (StartOfRound.Instance.shipHasLanded)
             {
-                PlayerControllerB player = list[i];
-                if (player.isInHangarShipRoom)
+                List<PlayerControllerB> list = Plugin.GetActivePlayers();
+                for (int i = 0; i < list.Count; i++)
                 {
-                    return true;
+                    PlayerControllerB player = list[i];
+                    if (player.isInHangarShipRoom)
+                    {
+                        return true;
+                    }
                 }
             }
             return false;
@@ -262,13 +269,16 @@ namespace FairAI
 
         public static bool IsAPlayerInsideDungeon()
         {
-            List<PlayerControllerB> list = Plugin.GetActivePlayers();
-            for (int i = 0; i < list.Count; i++)
+            if (StartOfRound.Instance.shipHasLanded)
             {
-                PlayerControllerB player = list[i];
-                if (player.isInsideFactory)
+                List<PlayerControllerB> list = Plugin.GetActivePlayers();
+                for (int i = 0; i < list.Count; i++)
                 {
-                    return true;
+                    PlayerControllerB player = list[i];
+                    if (player.isInsideFactory)
+                    {
+                        return true;
+                    }
                 }
             }
             return false;
