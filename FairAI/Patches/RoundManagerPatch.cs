@@ -9,9 +9,35 @@ namespace FairAI.Patches
         public static void PatchStart(ref StartOfRound __instance)
         {
             //This happens at the end of waiting for entrance teleport spawn
-            Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
             Plugin.items = Resources.FindObjectsOfTypeAll(typeof(Item)).Cast<Item>().Where(i => i != null).ToList();
             Plugin.allHittablesMask = StartOfRound.Instance.collidersRoomMaskDefaultAndPlayers | 2621448 | Plugin.enemyMask;
+            var killableEnemies = Plugin.enemies.Where(e => e.canDie).ToList();
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("General", "ImmortalAffected")))
+            {
+                ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("General", // Section Title
+                "ImmortalAffected", // The key of the configuration option in the configuration file
+                                             false, // The default value
+                                             "If set to on/true immortal enemies will be targeted and trip off traps."); // Description
+                if (!Plugin.GetBool("General", "ImmortalAffected"))
+                {
+                    Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
+                }
+                else
+                {
+                    Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
+                }
+            }
+            else
+            {
+                if (!Plugin.GetBool("General", "ImmortalAffected"))
+                {
+                    Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
+                }
+                else
+                {
+                    Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
+                }
+            }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("TurretConfig", "Enemy Damage")))
             {
                 ConfigEntry<float> tempEntry = Plugin.Instance.Config.Bind("TurretConfig", // Section Title

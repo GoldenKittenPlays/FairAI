@@ -72,6 +72,14 @@ namespace FairAI
             logger.LogInfo("Fair AI initiated!");
         }
 
+        public static void ImmortalAffected()
+        {
+            if(!GetBool("General", "ImmortalAffected"))
+            {
+                enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
+            }
+        }
+
         public static async Task<IEnumerable<int>> WaitForProcess(int waitTime)
         {
             await Task.Delay(waitTime);
@@ -469,7 +477,7 @@ namespace FairAI
                             targets.Add(hit.gameObject);
                         }
                     }
-                    if (!(hittable is EnemyAICollisionDetect) && !(hittable is PlayerControllerB))
+                    if (!(hittable is EnemyAICollisionDetect) && !(hittable is PlayerControllerB) && !(hittable is SandSpiderWebTrap))
                     {
                         if (!(hittable is Turret))
                         {
@@ -487,7 +495,7 @@ namespace FairAI
                 }
                 else
                 {
-                    // precaution: hit enemy without hitting hittable (immune to shovels?)
+                    //Precaution: hit enemy without hitting hittable (immune to shovels?)
                     if (hit.TryGetComponent(out EnemyAI ai))
                     {
                         if (!ai.isEnemyDead && ai.enemyHP > 0)
@@ -500,7 +508,6 @@ namespace FairAI
                 }
             }
             return targets;
-            //VisualiseShot(shotgunPosition, end);
         }
 
         public static List<EnemyAICollisionDetect> GetEnemyTargets(List<GameObject> originalTargets)
@@ -540,33 +547,6 @@ namespace FairAI
                         if (t.GetComponent<EnemyAI>() != null)
                         {
                             EnemyAI enemy = t.GetComponent<EnemyAI>();
-                            /*
-                            if (enemy.IsOwner)
-                            {
-                                int damage = 1;
-                                if (Plugin.CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.enemyType.enemyName))
-                                {
-                                    if (enemy is NutcrackerEnemyAI)
-                                    {
-                                        if (((NutcrackerEnemyAI)enemy).currentBehaviourStateIndex > 0)
-                                        {
-                                            enemy.HitEnemyOnLocalClient(damage);
-                                            hits = true;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        enemy.HitEnemyOnLocalClient(damage);
-                                        hits = true;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                //enemy.HitEnemyOnLocalClient(damage);
-                                ///hits = true;
-                            }
-                            */
                             int damage = GetInt("TurretConfig", "Enemy Damage");
                             if (CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.enemyType.enemyName))
                             {
@@ -591,33 +571,6 @@ namespace FairAI
                             if (hit is EnemyAICollisionDetect)
                             {
                                 EnemyAICollisionDetect enemy = (EnemyAICollisionDetect)hit;
-                                /*
-                                int damage = 1;
-                                if (enemy.mainScript.IsOwner)
-                                {
-                                    if (Plugin.CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.mainScript.enemyType.enemyName))
-                                    {
-                                        if (enemy.mainScript is NutcrackerEnemyAI)
-                                        {
-                                            if (((NutcrackerEnemyAI)enemy.mainScript).currentBehaviourStateIndex > 0)
-                                            {
-                                                enemy.mainScript.HitEnemyOnLocalClient(damage);
-                                                hits = true;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            enemy.mainScript.HitEnemyOnLocalClient(damage);
-                                            hits = true;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    //enemy.mainScript.HitEnemyOnLocalClient(damage);
-                                    ///hits = true;
-                                }
-                                */
                                 int damage = GetInt("TurretConfig", "Enemy Damage");
                                 if (CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.mainScript.enemyType.enemyName))
                                 {
