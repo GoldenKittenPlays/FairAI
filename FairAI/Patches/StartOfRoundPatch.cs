@@ -26,17 +26,6 @@ namespace FairAI.Patches
                     Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
                 }
             }
-            else
-            {
-                if (!Plugin.GetBool("General", "ImmortalAffected"))
-                {
-                    Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
-                }
-                else
-                {
-                    Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
-                }
-            }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("TurretConfig", "Enemy Damage")))
             {
                 ConfigEntry<float> tempEntry = Plugin.Instance.Config.Bind("TurretConfig", // Section Title
