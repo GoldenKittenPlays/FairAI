@@ -1,4 +1,5 @@
 ﻿using BepInEx.Configuration;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -9,7 +10,11 @@ namespace FairAI.Patches
         public static void PatchStart(ref StartOfRound __instance)
         {
             //This happens at the end of waiting for entrance teleport spawn
-            Plugin.items = Resources.FindObjectsOfTypeAll(typeof(Item)).Cast<Item>().Where(i => i != null).ToList();
+            if (!Plugin.itemList.SequenceEqual(Plugin.items) || Plugin.items.Count <= 0)
+            {
+                Plugin.items = Resources.FindObjectsOfTypeAll(typeof(Item)).Cast<Item>().Where(i => i != null).ToList();
+                Plugin.itemList = Plugin.items;
+            }
             Plugin.allHittablesMask = StartOfRound.Instance.collidersRoomMaskDefaultAndPlayers | 2621448 | Plugin.enemyMask;
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("General", "ImmortalAffected")))
             {
@@ -17,13 +22,31 @@ namespace FairAI.Patches
                 "ImmortalAffected", // The key of the configuration option in the configuration file
                                              false, // The default value
                                              "If set to on/true immortal enemies will be targeted and trip off traps."); // Description
-                if (!Plugin.GetBool("General", "ImmortalAffected"))
+                if (!(Plugin.enemies.Count <= 0))
                 {
-                    Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
+                    if (!Plugin.GetBool("General", "ImmortalAffected"))
+                    {
+                        Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
+                        Plugin.enemyList = Plugin.enemies;
+                    }
+                    else
+                    {
+                        Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
+                        Plugin.enemyList = Plugin.enemies;
+                    }
                 }
-                else
+                else if (!Plugin.enemyList.SequenceEqual(Plugin.enemies))
                 {
-                    Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
+                    if (!Plugin.GetBool("General", "ImmortalAffected"))
+                    {
+                        Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
+                        Plugin.enemyList = Plugin.enemies;
+                    }
+                    else
+                    {
+                        Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
+                        Plugin.enemyList = Plugin.enemies;
+                    }
                 }
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("TurretConfig", "Enemy Damage")))

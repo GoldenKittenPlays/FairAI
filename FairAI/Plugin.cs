@@ -32,6 +32,10 @@ namespace FairAI
 
         public static List<Item> items;
 
+        public static List<EnemyType> enemyList;
+
+        public static List<Item> itemList;
+
         public static Assembly surfacedAssembly;
 
         public const string ltModID = "evaisa.lethalthings";
@@ -53,6 +57,10 @@ namespace FairAI
             {
                 Instance = this;
             }
+            enemies = new List<EnemyType>();
+            items = new List<Item>();
+            itemList = new List<Item>();
+            enemyList = new List<EnemyType>();
             surfacedAssembly = null;
             harmony = new Harmony(modGUID);
             logger = BepInEx.Logging.Logger.CreateLogSource(modGUID);
