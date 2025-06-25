@@ -49,6 +49,9 @@
     <Reference Include="BepInEx.MonoMod.HookGenPatcher">
       <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\patchers\Evaisa-HookGenPatcher\BepInEx.MonoMod.HookGenPatcher\BepInEx.MonoMod.HookGenPatcher.dll</HintPath>
     </Reference>
+    <Reference Include="LethalConfig">
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\plugins\AinaVT-LethalConfig\LethalConfig\LethalConfig.dll</HintPath>
+    </Reference>
     <Reference Include="LethalLib">
       <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\plugins\Evaisa-LethalLib\LethalLib\LethalLib.dll</HintPath>
     </Reference>
@@ -72,6 +75,9 @@
     <Reference Include="System.Core" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Net.Http" />
+    <Reference Include="TheNameIsTyler.TurretSettings">
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\plugins\TheNameIsTyler-TurretSettings\TheNameIsTyler.TurretSettings.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.Netcode.Components, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Components.dll</HintPath>
@@ -119,6 +125,7 @@
     <Compile Include="Patches\BoombaPatch.cs" />
     <Compile Include="Patches\EnemyAIPatch.cs" />
     <Compile Include="Patches\MineAIPatch.cs" />
+    <Compile Include="Patches\QuickSandPatch.cs" />
     <Compile Include="Patches\RoundManagerPatch.cs" />
     <Compile Include="Patches\StartOfRoundPatch.cs" />
     <Compile Include="Patches\SurfaceMinePatch.cs" />

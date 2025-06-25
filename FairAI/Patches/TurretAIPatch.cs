@@ -112,7 +112,14 @@ internal class TurretAIPatch
             }
             fadeBulletAudioCoroutine.SetValue(turret, turret.StartCoroutine((IEnumerator)FadeBulletAudio.Invoke(turret, new object[0])));
             turret.bulletParticles.Stop(true, (ParticleSystemStopBehavior)1);
-            turret.rotationSpeed = 28f;
+            if (Plugin.turretSettings.Count > 7)
+            {
+                turret.rotationSpeed = Plugin.turretSettings[5];
+            }
+            else
+            {
+                turret.rotationSpeed = 28f;
+            }
             rotatingSmoothly.SetValue(turret, true);
             turret.turretAnimator.SetInteger("TurretMode", 0);
             turretInterval.SetValue(turret, UnityEngine.Random.Range(0f, 0.15f));
@@ -121,16 +128,33 @@ internal class TurretAIPatch
         {
             return;
         }
-        if ((float)switchRotationTimer.GetValue(turret) >= 7f)
+        if (Plugin.turretSettings.Count > 7)
         {
-            switchRotationTimer.SetValue(turret, 0f);
-            bool setRotateRight = !(bool)rotatingRight.GetValue(turret);
-            turret.SwitchRotationClientRpc(setRotateRight);
-            turret.SwitchRotationOnInterval(setRotateRight);
+            if ((float)switchRotationTimer.GetValue(turret) >= Plugin.turretSettings[3])
+            {
+                switchRotationTimer.SetValue(turret, 0f);
+                bool setRotateRight = !(bool)rotatingRight.GetValue(turret);
+                turret.SwitchRotationClientRpc(setRotateRight);
+                turret.SwitchRotationOnInterval(setRotateRight);
+            }
+            else
+            {
+                switchRotationTimer.SetValue(turret, (float)switchRotationTimer.GetValue(turret) + Time.deltaTime);
+            }
         }
         else
         {
-            switchRotationTimer.SetValue(turret, (float)switchRotationTimer.GetValue(turret) + Time.deltaTime);
+            if ((float)switchRotationTimer.GetValue(turret) >= 7f)
+            {
+                switchRotationTimer.SetValue(turret, 0f);
+                bool setRotateRight = !(bool)rotatingRight.GetValue(turret);
+                turret.SwitchRotationClientRpc(setRotateRight);
+                turret.SwitchRotationOnInterval(setRotateRight);
+            }
+            else
+            {
+                switchRotationTimer.SetValue(turret, (float)switchRotationTimer.GetValue(turret) + Time.deltaTime);
+            }
         }
         if ((float)turretInterval.GetValue(turret) >= 0.25f)
         {
@@ -179,7 +203,10 @@ internal class TurretAIPatch
             turret.mainAudio.PlayOneShot(turret.detectPlayerSFX);
             turret.berserkAudio.Stop();
             WalkieTalkie.TransmitOneShotAudio(turret.mainAudio, turret.detectPlayerSFX);
-            turret.rotationSpeed = 95f;
+            if (Plugin.turretSettings.Count > 7)
+                turret.rotationSpeed = Plugin.turretSettings[6];
+            else
+                turret.rotationSpeed = 95f;
             rotatingSmoothly.SetValue(turret, false);
             lostLOSTimer.SetValue(turret, 0f);
             turret.turretAnimator.SetInteger("TurretMode", 1);
@@ -245,110 +272,221 @@ internal class TurretAIPatch
             lostLOSTimer.SetValue(turret, 0f);
             turret.turretAnimator.SetInteger("TurretMode", 2);
         }
-        if ((float)turretInterval.GetValue(turret) >= 0.21f)
+        if (Plugin.turretSettings.Count > 7)
         {
-            Plugin.logger.LogInfo("Attacking Target");
-            turretInterval.SetValue(turret, 0f);
-            if (CheckForPlayersInLOS(turret, 3f) == GameNetworkManager.Instance.localPlayerController)
+            if ((float)turretInterval.GetValue(turret) >= Plugin.turretSettings[1])
             {
-                int damage = Plugin.GetInt("TurretConfig", "Player Damage");
-                if (damage <= 0)
+                Plugin.logger.LogInfo("Attacking Target");
+                turretInterval.SetValue(turret, 0f);
+                if (CheckForPlayersInLOS(turret, 3f) == GameNetworkManager.Instance.localPlayerController)
                 {
-                    GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
-                    GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, false, true, (CauseOfDeath)0, 0, false, default);
-                    GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
-                }
-                else
-                {
-                    if (GameNetworkManager.Instance.localPlayerController.health > 50)
+                    int damage = (int)Plugin.turretSettings[0];
+                    if (damage <= 0)
                     {
-                        GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, hasDamageSFX: true, callRPC: true, CauseOfDeath.Gunshots);
+                        GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
+                        GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, false, true, (CauseOfDeath)0, 0, false, default);
+                        GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
                     }
                     else
                     {
-                        GameNetworkManager.Instance.localPlayerController.KillPlayer(turret.aimPoint.forward * 40f, spawnBody: true, CauseOfDeath.Gunshots);
+                        if (GameNetworkManager.Instance.localPlayerController.health > Plugin.turretSettings[0])
+                        {
+                            GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, hasDamageSFX: true, callRPC: true, CauseOfDeath.Gunshots);
+                        }
+                        else
+                        {
+                            GameNetworkManager.Instance.localPlayerController.KillPlayer(turret.aimPoint.forward * 40f, spawnBody: true, CauseOfDeath.Gunshots);
+                        }
                     }
                 }
-            }
-            shootRay.SetValue(turret, new Ray(turret.aimPoint.position, turret.aimPoint.forward));
-            RaycastHit rayHit = default(RaycastHit);
-            if (Physics.Raycast((Ray)shootRay.GetValue(turret), out rayHit, 30f, StartOfRound.Instance.collidersAndRoomMask, (QueryTriggerInteraction)1))
-            {
-                hit.SetValue(turret, rayHit);
-                Transform transform = (turret.bulletCollisionAudio).transform;
-                Ray val = (Ray)shootRay.GetValue(turret);
-                RaycastHit val2 = (RaycastHit)hit.GetValue(turret);
-                Ray val3 = val;
-                transform.position = ((Ray)(val3)).GetPoint(val2.distance - 0.5f);
-            }
-            Vector3 forward = turret.aimPoint.forward;
-            forward = Quaternion.Euler(0f, (float)(int)(0f - turret.rotationRange) / 3f, 0f) * forward;
-            Plugin.AttackTargets(turret.GetComponent<FAIR_AI>(), turret.aimPoint.position, forward, 30f);
-            FAIR_AI ai = turret.GetComponent<FAIR_AI>();
-            if (ai.targetWithRotation != null)
-            {
-                EnemyAICollisionDetect detected = ai.targetWithRotation.GetComponent<EnemyAICollisionDetect>();
-                if (detected != null)
+                shootRay.SetValue(turret, new Ray(turret.aimPoint.position, turret.aimPoint.forward));
+                RaycastHit rayHit = default(RaycastHit);
+                if (Physics.Raycast((Ray)shootRay.GetValue(turret), out rayHit, 30f, StartOfRound.Instance.collidersAndRoomMask, (QueryTriggerInteraction)1))
                 {
-                    if (detected.mainScript.isEnemyDead || detected.mainScript.enemyHP <= 0)
+                    hit.SetValue(turret, rayHit);
+                    Transform transform = (turret.bulletCollisionAudio).transform;
+                    Ray val = (Ray)shootRay.GetValue(turret);
+                    RaycastHit val2 = (RaycastHit)hit.GetValue(turret);
+                    Ray val3 = val;
+                    transform.position = ((Ray)(val3)).GetPoint(val2.distance - 0.5f);
+                }
+                Vector3 forward = turret.aimPoint.forward;
+                forward = Quaternion.Euler(0f, (float)(int)(0f - turret.rotationRange) / 3f, 0f) * forward;
+                Plugin.AttackTargets(turret.GetComponent<FAIR_AI>(), turret.aimPoint.position, forward, 30f);
+                FAIR_AI ai = turret.GetComponent<FAIR_AI>();
+                if (ai.targetWithRotation != null)
+                {
+                    EnemyAICollisionDetect detected = ai.targetWithRotation.GetComponent<EnemyAICollisionDetect>();
+                    if (detected != null)
                     {
-                        ai.targetWithRotation = null;
-                        ai.RemoveTargetedEnemyClientRpc();
+                        if (detected.mainScript.isEnemyDead || detected.mainScript.enemyHP <= 0)
+                        {
+                            ai.targetWithRotation = null;
+                            ai.RemoveTargetedEnemyClientRpc();
+                        }
                     }
                 }
-            }
-            if (turret.targetPlayerWithRotation != null)
-            {
-                if (turret.targetPlayerWithRotation.isPlayerDead)
+                if (turret.targetPlayerWithRotation != null)
                 {
-                    turret.targetPlayerWithRotation = null;
-                    turret.RemoveTargetedPlayerClientRpc();
+                    if (turret.targetPlayerWithRotation.isPlayerDead)
+                    {
+                        turret.targetPlayerWithRotation = null;
+                        turret.RemoveTargetedPlayerClientRpc();
+                    }
                 }
-            }
 
-            if (turret.targetPlayerWithRotation == null && ai.targetWithRotation == null)
-            {
-                turret.turretMode = TurretMode.Detection;
-                turret.SetToModeClientRpc((int)TurretMode.Detection);
-                wasTargetingPlayerLastFrame.SetValue(turret, false);
-                targetingDeadPlayer.SetValue(turret, true);
-                turret.turretAnimator.SetInteger("TurretMode", 0);
-                SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
+                if (turret.targetPlayerWithRotation == null && ai.targetWithRotation == null)
+                {
+                    turret.turretMode = TurretMode.Detection;
+                    turret.SetToModeClientRpc((int)TurretMode.Detection);
+                    wasTargetingPlayerLastFrame.SetValue(turret, false);
+                    targetingDeadPlayer.SetValue(turret, true);
+                    turret.turretAnimator.SetInteger("TurretMode", 0);
+                    SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
+                }
+                else
+                {
+                    if (turret.targetTransform != null)
+                    {
+                        if (turret.targetTransform.GetComponent<EnemyAI>() != null)
+                        {
+                            if (turret.targetTransform.GetComponent<EnemyAI>().isEnemyDead)
+                            {
+                                turret.turretMode = TurretMode.Detection;
+                                turret.SetToModeClientRpc((int)TurretMode.Detection);
+                                wasTargetingPlayerLastFrame.SetValue(turret, false);
+                                targetingDeadPlayer.SetValue(turret, true);
+                                turret.turretAnimator.SetInteger("TurretMode", 0);
+                                SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
+                            }
+                        }
+                        else if (turret.targetTransform.GetComponent<EnemyAICollisionDetect>())
+                        {
+                            if (turret.targetTransform.GetComponent<EnemyAICollisionDetect>().mainScript.isEnemyDead)
+                            {
+                                turret.turretMode = TurretMode.Detection;
+                                turret.SetToModeClientRpc((int)TurretMode.Detection);
+                                wasTargetingPlayerLastFrame.SetValue(turret, false);
+                                targetingDeadPlayer.SetValue(turret, true);
+                                turret.turretAnimator.SetInteger("TurretMode", 0);
+                                SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
+                            }
+                        }
+                    }
+                }
             }
             else
             {
-                if (turret.targetTransform != null)
-                {
-                    if (turret.targetTransform.GetComponent<EnemyAI>() != null)
-                    {
-                        if (turret.targetTransform.GetComponent<EnemyAI>().isEnemyDead)
-                        {
-                            turret.turretMode = TurretMode.Detection;
-                            turret.SetToModeClientRpc((int)TurretMode.Detection);
-                            wasTargetingPlayerLastFrame.SetValue(turret, false);
-                            targetingDeadPlayer.SetValue(turret, true);
-                            turret.turretAnimator.SetInteger("TurretMode", 0);
-                            SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
-                        }
-                    }
-                    else if (turret.targetTransform.GetComponent<EnemyAICollisionDetect>())
-                    {
-                        if (turret.targetTransform.GetComponent<EnemyAICollisionDetect>().mainScript.isEnemyDead)
-                        {
-                            turret.turretMode = TurretMode.Detection;
-                            turret.SetToModeClientRpc((int)TurretMode.Detection);
-                            wasTargetingPlayerLastFrame.SetValue(turret, false);
-                            targetingDeadPlayer.SetValue(turret, true);
-                            turret.turretAnimator.SetInteger("TurretMode", 0);
-                            SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
-                        }
-                    }
-                }
+                turretInterval.SetValue(turret, (float)turretInterval.GetValue(turret) + Time.deltaTime);
             }
         }
         else
         {
-            turretInterval.SetValue(turret, (float)turretInterval.GetValue(turret) + Time.deltaTime);
+            if ((float)turretInterval.GetValue(turret) >= 0.21f)
+            {
+                Plugin.logger.LogInfo("Attacking Target");
+                turretInterval.SetValue(turret, 0f);
+                if (CheckForPlayersInLOS(turret, 3f) == GameNetworkManager.Instance.localPlayerController)
+                {
+                    int damage = Plugin.GetInt("TurretConfig", "Player Damage");
+                    if (damage <= 0)
+                    {
+                        GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
+                        GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, false, true, (CauseOfDeath)0, 0, false, default);
+                        GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
+                    }
+                    else
+                    {
+                        if (GameNetworkManager.Instance.localPlayerController.health > 50)
+                        {
+                            GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, hasDamageSFX: true, callRPC: true, CauseOfDeath.Gunshots);
+                        }
+                        else
+                        {
+                            GameNetworkManager.Instance.localPlayerController.KillPlayer(turret.aimPoint.forward * 40f, spawnBody: true, CauseOfDeath.Gunshots);
+                        }
+                    }
+                }
+                shootRay.SetValue(turret, new Ray(turret.aimPoint.position, turret.aimPoint.forward));
+                RaycastHit rayHit = default(RaycastHit);
+                if (Physics.Raycast((Ray)shootRay.GetValue(turret), out rayHit, 30f, StartOfRound.Instance.collidersAndRoomMask, (QueryTriggerInteraction)1))
+                {
+                    hit.SetValue(turret, rayHit);
+                    Transform transform = (turret.bulletCollisionAudio).transform;
+                    Ray val = (Ray)shootRay.GetValue(turret);
+                    RaycastHit val2 = (RaycastHit)hit.GetValue(turret);
+                    Ray val3 = val;
+                    transform.position = ((Ray)(val3)).GetPoint(val2.distance - 0.5f);
+                }
+                Vector3 forward = turret.aimPoint.forward;
+                forward = Quaternion.Euler(0f, (float)(int)(0f - turret.rotationRange) / 3f, 0f) * forward;
+                Plugin.AttackTargets(turret.GetComponent<FAIR_AI>(), turret.aimPoint.position, forward, 30f);
+                FAIR_AI ai = turret.GetComponent<FAIR_AI>();
+                if (ai.targetWithRotation != null)
+                {
+                    EnemyAICollisionDetect detected = ai.targetWithRotation.GetComponent<EnemyAICollisionDetect>();
+                    if (detected != null)
+                    {
+                        if (detected.mainScript.isEnemyDead || detected.mainScript.enemyHP <= 0)
+                        {
+                            ai.targetWithRotation = null;
+                            ai.RemoveTargetedEnemyClientRpc();
+                        }
+                    }
+                }
+                if (turret.targetPlayerWithRotation != null)
+                {
+                    if (turret.targetPlayerWithRotation.isPlayerDead)
+                    {
+                        turret.targetPlayerWithRotation = null;
+                        turret.RemoveTargetedPlayerClientRpc();
+                    }
+                }
+
+                if (turret.targetPlayerWithRotation == null && ai.targetWithRotation == null)
+                {
+                    turret.turretMode = TurretMode.Detection;
+                    turret.SetToModeClientRpc((int)TurretMode.Detection);
+                    wasTargetingPlayerLastFrame.SetValue(turret, false);
+                    targetingDeadPlayer.SetValue(turret, true);
+                    turret.turretAnimator.SetInteger("TurretMode", 0);
+                    SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
+                }
+                else
+                {
+                    if (turret.targetTransform != null)
+                    {
+                        if (turret.targetTransform.GetComponent<EnemyAI>() != null)
+                        {
+                            if (turret.targetTransform.GetComponent<EnemyAI>().isEnemyDead)
+                            {
+                                turret.turretMode = TurretMode.Detection;
+                                turret.SetToModeClientRpc((int)TurretMode.Detection);
+                                wasTargetingPlayerLastFrame.SetValue(turret, false);
+                                targetingDeadPlayer.SetValue(turret, true);
+                                turret.turretAnimator.SetInteger("TurretMode", 0);
+                                SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
+                            }
+                        }
+                        else if (turret.targetTransform.GetComponent<EnemyAICollisionDetect>())
+                        {
+                            if (turret.targetTransform.GetComponent<EnemyAICollisionDetect>().mainScript.isEnemyDead)
+                            {
+                                turret.turretMode = TurretMode.Detection;
+                                turret.SetToModeClientRpc((int)TurretMode.Detection);
+                                wasTargetingPlayerLastFrame.SetValue(turret, false);
+                                targetingDeadPlayer.SetValue(turret, true);
+                                turret.turretAnimator.SetInteger("TurretMode", 0);
+                                SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                turretInterval.SetValue(turret, (float)turretInterval.GetValue(turret) + Time.deltaTime);
+            }
         }
     }
 
@@ -373,7 +511,10 @@ internal class TurretAIPatch
             turret.turretAnimator.SetInteger("TurretMode", 1);
             berserkTimer.SetValue(turret, 1.3f);
             turret.berserkAudio.Play();
-            turret.rotationSpeed = 77f;
+            if (Plugin.turretSettings.Count > 7)
+                turret.rotationSpeed = Plugin.turretSettings[7];
+            else
+                turret.rotationSpeed = 77f;
             enteringBerserkMode.SetValue(turret, true);
             rotatingSmoothly.SetValue(turret, true);
             lostLOSTimer.SetValue(turret, 0f);
@@ -403,47 +544,95 @@ internal class TurretAIPatch
             }
             return;
         }
-        if ((float)turretInterval.GetValue(turret) >= 0.21f)
+        if (Plugin.turretSettings.Count > 7)
         {
-            turretInterval.SetValue(turret, 0f);
-            if (CheckForPlayersInLOS(turret, 3f) == GameNetworkManager.Instance.localPlayerController)
+            if ((float)turretInterval.GetValue(turret) >= Plugin.turretSettings[1])
             {
-                int damage = Plugin.GetInt("TurretConfig", "Player Damage");
-                if (damage <= 0)
+                turretInterval.SetValue(turret, 0f);
+                if (CheckForPlayersInLOS(turret, 3f) == GameNetworkManager.Instance.localPlayerController)
                 {
-                  GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
-                    GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, false, true, (CauseOfDeath)0, 0, false, default);
-                   GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
-                }
-                else
-                {
-                    if (GameNetworkManager.Instance.localPlayerController.health > 50)
+                    int damage = (int)Plugin.turretSettings[0];
+                    if (damage <= 0)
                     {
-                        GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, hasDamageSFX: true, callRPC: true, CauseOfDeath.Gunshots);
+                        GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
+                        GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, false, true, (CauseOfDeath)0, 0, false, default);
+                        GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
                     }
                     else
                     {
-                        GameNetworkManager.Instance.localPlayerController.KillPlayer(turret.aimPoint.forward * 40f, spawnBody: true, CauseOfDeath.Gunshots);
+                        if (GameNetworkManager.Instance.localPlayerController.health > damage)
+                        {
+                            GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, hasDamageSFX: true, callRPC: true, CauseOfDeath.Gunshots);
+                        }
+                        else
+                        {
+                            GameNetworkManager.Instance.localPlayerController.KillPlayer(turret.aimPoint.forward * 40f, spawnBody: true, CauseOfDeath.Gunshots);
+                        }
                     }
                 }
+                shootRay.SetValue(turret, new Ray(turret.aimPoint.position, turret.aimPoint.forward));
+                RaycastHit rayHit = default(RaycastHit);
+                if (Physics.Raycast((Ray)shootRay.GetValue(turret), out rayHit, 30f, StartOfRound.Instance.collidersAndRoomMask, (QueryTriggerInteraction)1))
+                {
+                    hit.SetValue(turret, rayHit);
+                    Transform transform = (turret.bulletCollisionAudio).transform;
+                    Ray val = (Ray)shootRay.GetValue(turret);
+                    RaycastHit val2 = (RaycastHit)hit.GetValue(turret);
+                    transform.position = ((Ray)(val)).GetPoint(val2.distance - 0.5f);
+                }
+                Vector3 forward = turret.aimPoint.forward;
+                forward = Quaternion.Euler(0f, (float)(int)(0f - turret.rotationRange) / 3f, 0f) * forward;
+                Plugin.AttackTargets(turret.GetComponent<FAIR_AI>(), turret.centerPoint.position, forward, 30f);
             }
-            shootRay.SetValue(turret, new Ray(turret.aimPoint.position, turret.aimPoint.forward));
-            RaycastHit rayHit = default(RaycastHit);
-            if (Physics.Raycast((Ray)shootRay.GetValue(turret), out rayHit, 30f, StartOfRound.Instance.collidersAndRoomMask, (QueryTriggerInteraction)1))
+            else
             {
-                hit.SetValue(turret, rayHit);
-                Transform transform = (turret.bulletCollisionAudio).transform;
-                Ray val = (Ray)shootRay.GetValue(turret);
-                RaycastHit val2 = (RaycastHit)hit.GetValue(turret);
-                transform.position = ((Ray)(val)).GetPoint(val2.distance - 0.5f);
+                turretInterval.SetValue(turret, (float)turretInterval.GetValue(turret) + Time.deltaTime);
             }
-            Vector3 forward = turret.aimPoint.forward;
-            forward = Quaternion.Euler(0f, (float)(int)(0f - turret.rotationRange) / 3f, 0f) * forward;
-            Plugin.AttackTargets(turret.GetComponent<FAIR_AI>(), turret.centerPoint.position, forward, 30f);
         }
         else
         {
-            turretInterval.SetValue(turret, (float)turretInterval.GetValue(turret) + Time.deltaTime);
+            if ((float)turretInterval.GetValue(turret) >= 0.21f)
+            {
+                turretInterval.SetValue(turret, 0f);
+                if (CheckForPlayersInLOS(turret, 3f) == GameNetworkManager.Instance.localPlayerController)
+                {
+                    int damage = Plugin.GetInt("TurretConfig", "Player Damage");
+                    if (damage <= 0)
+                    {
+                        GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
+                        GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, false, true, (CauseOfDeath)0, 0, false, default);
+                        GameNetworkManager.Instance.localPlayerController.MakeCriticallyInjured(false);
+                    }
+                    else
+                    {
+                        if (GameNetworkManager.Instance.localPlayerController.health > 50)
+                        {
+                            GameNetworkManager.Instance.localPlayerController.DamagePlayer(damage, hasDamageSFX: true, callRPC: true, CauseOfDeath.Gunshots);
+                        }
+                        else
+                        {
+                            GameNetworkManager.Instance.localPlayerController.KillPlayer(turret.aimPoint.forward * 40f, spawnBody: true, CauseOfDeath.Gunshots);
+                        }
+                    }
+                }
+                shootRay.SetValue(turret, new Ray(turret.aimPoint.position, turret.aimPoint.forward));
+                RaycastHit rayHit = default(RaycastHit);
+                if (Physics.Raycast((Ray)shootRay.GetValue(turret), out rayHit, 30f, StartOfRound.Instance.collidersAndRoomMask, (QueryTriggerInteraction)1))
+                {
+                    hit.SetValue(turret, rayHit);
+                    Transform transform = (turret.bulletCollisionAudio).transform;
+                    Ray val = (Ray)shootRay.GetValue(turret);
+                    RaycastHit val2 = (RaycastHit)hit.GetValue(turret);
+                    transform.position = ((Ray)(val)).GetPoint(val2.distance - 0.5f);
+                }
+                Vector3 forward = turret.aimPoint.forward;
+                forward = Quaternion.Euler(0f, (float)(int)(0f - turret.rotationRange) / 3f, 0f) * forward;
+                Plugin.AttackTargets(turret.GetComponent<FAIR_AI>(), turret.centerPoint.position, forward, 30f);
+            }
+            else
+            {
+                turretInterval.SetValue(turret, (float)turretInterval.GetValue(turret) + Time.deltaTime);
+            }
         }
         if (turret.IsServer)
         {

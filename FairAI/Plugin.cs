@@ -20,7 +20,7 @@ namespace FairAI
     [BepInDependency(surfacedModID, BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
-        private const string modGUID = "GoldenKitten.FairAI", modName = "Fair AI", modVersion = "1.3.8";
+        private const string modGUID = "GoldenKitten.FairAI", modName = "Fair AI", modVersion = "1.5.1";
 
         private Harmony harmony = new Harmony(modGUID);
 
@@ -36,7 +36,19 @@ namespace FairAI
 
         public static List<Item> itemList;
 
+        public static List<float> turretSettings;
+
+        public static Dictionary<string, float[]> speeds;
+
+        public static Dictionary<int, Vector3> positions;
+
+        public static Dictionary<int, float> sinkingValues;
+
         public static Assembly surfacedAssembly;
+
+        public static Assembly turretSettingsAssembly;
+
+        public static PropertyInfo tsBoundConfig;
 
         public const string ltModID = "evaisa.lethalthings";
         public const string surfacedModID = "Surfaced";
@@ -44,6 +56,9 @@ namespace FairAI
         public static bool playersEnteredInside = false;
         public static bool surfacedEnabled = false;
         public static bool lethalThingsEnabled = false;
+        public static bool turretSettingsEnabled = false;
+        public static bool lethalConfigEnabled = false;
+        public static bool roundHasStarted = false;
 
         public static int wallsAndEnemyLayerMask = 524288;
         public static int enemyMask = (1 << 19);
@@ -61,6 +76,10 @@ namespace FairAI
             items = new List<Item>();
             itemList = new List<Item>();
             enemyList = new List<EnemyType>();
+            speeds = new Dictionary<string, float[]>();
+            positions = new Dictionary<int, Vector3>();
+            turretSettings = new List<float>();
+            sinkingValues = new Dictionary<int, float>();
             surfacedAssembly = null;
             harmony = new Harmony(modGUID);
             logger = BepInEx.Logging.Logger.CreateLogSource(modGUID);
@@ -68,6 +87,8 @@ namespace FairAI
             CreateHarmonyPatch(harmony, typeof(RoundManager), "Start", null, typeof(RoundManagerPatch), nameof(RoundManagerPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Start", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Update", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchUpdate), false);
+            CreateHarmonyPatch(harmony, typeof(QuicksandTrigger), "OnTriggerStay", new[] { typeof(Collider) }, typeof(QuickSandPatch), nameof(QuickSandPatch.OnTriggerStayPatch), true);
+            CreateHarmonyPatch(harmony, typeof(QuicksandTrigger), "OnTriggerExit", new[] { typeof(Collider)}, typeof(QuickSandPatch), nameof(QuickSandPatch.OnTriggerExitPatch), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchUpdate), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "CheckForPlayersInLineOfSight", new[] { typeof(float), typeof(bool) }, typeof(TurretAIPatch), nameof(TurretAIPatch.CheckForTargetsInLOS), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.SetTargetToEnemyBody), true);
@@ -77,6 +98,7 @@ namespace FairAI
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerExit", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerExit), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "Detonate", null, typeof(MineAIPatch), nameof(MineAIPatch.DetonatePatch), false);
             await WaitForProcess(1);
+            GetTurretSettings();
             logger.LogInfo("Fair AI initiated!");
         }
 
@@ -85,6 +107,167 @@ namespace FairAI
             if(!GetBool("General", "ImmortalAffected"))
             {
                 enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
+            }
+        }
+
+        public static float[] SpeedAndAccelerationEnemyList(EnemyAICollisionDetect enemy)
+        {
+            if (enemy != null)
+            {
+                EnemyAI ai = enemy.mainScript;
+                if (enemy.mainScript != null)
+                {
+                    EnemyType eType = ai.enemyType;
+                    string name = eType.enemyName;
+                    if (eType != null)
+                    {
+                        if (GetSpeeds(enemy) == null)
+                        {
+                            NavMeshAgent agent = ai.GetComponentInChildren<NavMeshAgent>();
+                            if (agent != null)
+                            {
+                                speeds.Add(eType.enemyName, new float[] { agent.speed, agent.acceleration });
+                                return speeds[eType.enemyName];
+                            }
+                            else
+                            {
+                                speeds.Add(eType.enemyName, new float[] { 1, 1 });
+                                return speeds[eType.enemyName];
+                            }
+                        }
+                        else
+                        {
+                            return speeds[eType.enemyName];
+                        }
+                    }
+                }
+                else
+                {
+                    logger.LogWarning("No EnemyAI To Get Speeds!");
+                }
+            }
+            else
+            {
+                logger.LogWarning("No EnemyCollision To Get Speeds!");
+            }
+            return new float[] { 1, 1 };
+        }
+
+        public static float[] GetSpeeds(EnemyAICollisionDetect enemy)
+        {
+            EnemyType eType = enemy.mainScript.enemyType;
+            if (speeds.TryGetValue(eType.enemyName, out float[] values))
+            {
+                return values;
+            }
+            else
+            {
+                logger.LogWarning($"Speeds missing on: {eType.enemyName}");
+                return null;
+            }
+        }
+
+        public static void GetTurretSettings()
+        {
+            if (turretSettingsEnabled)
+            {
+                System.Object bc = tsBoundConfig.GetValue(null);
+                System.Type bcType = null;
+                if (bc != null)
+                {
+                    bcType = bc.GetType();
+                    if (bcType == null)
+                    {
+                        logger.LogInfo("Bound Config Type not gotten!");
+                    }
+                }
+                else
+                {
+                    logger.LogInfo("Unable to get BoundConfig");
+                }
+                FieldInfo turretDamageField = bcType.GetField("turretDamage", BindingFlags.Instance | BindingFlags.Public);
+
+                if (turretDamageField != null)
+                {
+                    object turretDamageEntry = turretDamageField.GetValue(bc);
+                    PropertyInfo valueProperty = turretDamageEntry?.GetType().GetProperty("Value");
+                    float turretDamage = (int)valueProperty?.GetValue(turretDamageEntry);
+                    turretSettings.Add(turretDamage);
+                }
+                FieldInfo turretFireRateField = bcType.GetField("turretFireRate", BindingFlags.Instance | BindingFlags.Public);
+
+                if (turretFireRateField != null)
+                {
+                    object turretFireRateEntry = turretFireRateField.GetValue(bc);
+                    PropertyInfo valueProperty = turretFireRateEntry?.GetType().GetProperty("Value");
+                    float turretFireRate = (float)valueProperty?.GetValue(turretFireRateEntry);
+                    turretSettings.Add(turretFireRate);
+                }
+
+                FieldInfo turretWarmupTimeField = bcType.GetField("turretWarmupTime", BindingFlags.Instance | BindingFlags.Public);
+
+                if (turretWarmupTimeField != null)
+                {
+                    object turretWarmupTimeEntry = turretWarmupTimeField.GetValue(bc);
+                    PropertyInfo valueProperty = turretWarmupTimeEntry?.GetType().GetProperty("Value");
+                    float turretWarmupTime = (float)valueProperty?.GetValue(turretWarmupTimeEntry);
+                    turretSettings.Add(turretWarmupTime);
+                }
+
+                FieldInfo turretRotateTimerField = bcType.GetField("turretRotateTimer", BindingFlags.Instance | BindingFlags.Public);
+
+                if (turretRotateTimerField != null)
+                {
+                    object turretRotateTimerEntry = turretRotateTimerField.GetValue(bc);
+                    PropertyInfo valueProperty = turretRotateTimerEntry?.GetType().GetProperty("Value");
+                    float turretRotateTimer = (float)valueProperty?.GetValue(turretRotateTimerEntry);
+                    turretSettings.Add(turretRotateTimer);
+                }
+
+                FieldInfo turretRotationRangeField = bcType.GetField("turretRotationRange", BindingFlags.Instance | BindingFlags.Public);
+
+                if (turretRotationRangeField != null)
+                {
+                    object turretRotationRangeEntry = turretRotationRangeField.GetValue(bc);
+                    PropertyInfo valueProperty = turretRotationRangeEntry?.GetType().GetProperty("Value");
+                    float turretRotationRange = (float)valueProperty?.GetValue(turretRotationRangeEntry);
+                    turretSettings.Add(turretRotationRange);
+                }
+
+                FieldInfo turretIdleRotationSpeedField = bcType.GetField("turretIdleRotationSpeed", BindingFlags.Instance | BindingFlags.Public);
+
+                if (turretIdleRotationSpeedField != null)
+                {
+                    object turretIdleRotationSpeedEntry = turretIdleRotationSpeedField.GetValue(bc);
+                    PropertyInfo valueProperty = turretIdleRotationSpeedEntry?.GetType().GetProperty("Value");
+                    float turretIdleRotationSpeed = (float)valueProperty?.GetValue(turretIdleRotationSpeedEntry);
+                    turretSettings.Add(turretIdleRotationSpeed);
+                }
+
+                FieldInfo turretFiringRotationSpeedField = bcType.GetField("turretFiringRotationSpeed", BindingFlags.Instance | BindingFlags.Public);
+
+                if (turretFiringRotationSpeedField != null)
+                {
+                    object turretFiringRotationSpeedEntry = turretFiringRotationSpeedField.GetValue(bc);
+                    PropertyInfo valueProperty = turretFiringRotationSpeedEntry?.GetType().GetProperty("Value");
+                    float turretFiringRotationSpeed = (float)valueProperty?.GetValue(turretFiringRotationSpeedEntry);
+                    turretSettings.Add(turretFiringRotationSpeed);
+                }
+
+                FieldInfo turretBerzerkRotationSpeedField = bcType.GetField("turretBerzerkRotationSpeed", BindingFlags.Instance | BindingFlags.Public);
+
+                if (turretBerzerkRotationSpeedField != null)
+                {
+                    object turretBerzerkRotationSpeedEntry = turretBerzerkRotationSpeedField.GetValue(bc);
+                    PropertyInfo valueProperty = turretBerzerkRotationSpeedEntry?.GetType().GetProperty("Value");
+                    float turretBerzerkRotationSpeed = (float)valueProperty?.GetValue(turretBerzerkRotationSpeedEntry);
+                    turretSettings.Add(turretBerzerkRotationSpeed);
+                }
+                logger.LogInfo("Got Turret Settings: " + turretSettings.Count);
+            }
+            else
+            {
+                turretSettings = new List<float>();
             }
         }
 
@@ -106,6 +289,8 @@ namespace FairAI
             {
                 TryLoadLethalThings();
                 TryLoadSurfaced();
+                TryLoadTurretSettings();
+                TryLoadLethalConfig();
                 logger.LogInfo("Optional Components initiated!");
             });
         }
@@ -210,6 +395,83 @@ namespace FairAI
             catch (Exception e)
             {
                 logger.LogError($"An error occurred while trying to apply patches for Surfaced: {e.Message}");
+            }
+        }
+
+        private void TryLoadTurretSettings()
+        {
+            try
+            {
+                Assembly tsAssembly = Assembly.Load("TheNameIsTyler.TurretSettings");
+                if (tsAssembly != null)
+                {
+                    turretSettingsAssembly = tsAssembly;
+                    Type turretSettingsType = turretSettingsAssembly.GetType("TurretSettings.TurretSettings");
+                    if (turretSettingsType != null)
+                    {
+                        PropertyInfo boundConfigField = turretSettingsType.GetProperty("BoundConfig", BindingFlags.Static | BindingFlags.NonPublic);
+                        if (boundConfigField != null)
+                        {
+                            tsBoundConfig = boundConfigField;
+                            turretSettingsEnabled = true;
+                            logger.LogInfo("TurretSettings Component Initiated!");
+                        }
+                        else
+                        {
+                            logger.LogWarning("TurretSettings config not found. Skipping optional patch.");
+                        }
+                    }
+                    else
+                    {
+                        logger.LogWarning("TurretSettings type not found. Skipping optional patch.");
+                    }
+                }
+                else
+                {
+                    logger.LogWarning("TurretSettings assembly not found. Skipping optional patch.");
+                }
+            }
+            catch (Exception e)
+            {
+                logger.LogError($"An error occurred while trying to apply patches for TurretSettings: {e.Message}");
+            }
+        }
+
+        private void TryLoadLethalConfig()
+        {
+            try
+            {
+                // Get all loaded assemblies
+                Assembly[] loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+                Assembly lethalConfigAssembly = null;
+                // Find the LethalThings assembly
+                foreach (var assembly in loadedAssemblies)
+                {
+                    if (assembly.GetName().Name == "LethalConfig")
+                    {
+                        lethalConfigAssembly = assembly;
+                        break;
+                    }
+                }
+
+                if (lethalConfigAssembly != null)
+                {
+                    Type lethalConfigType = lethalConfigAssembly.GetType("LethalConfig.LethalConfigManager");
+
+                    if (lethalConfigType != null)
+                    {
+                        lethalConfigEnabled = true;
+                        logger.LogInfo("LethalConfig Component Initiated!");
+                    }
+                }
+                else
+                {
+                    logger.LogWarning("LethalConfig assembly not found. Skipping optional patch.");
+                }
+            }
+            catch (Exception e)
+            {
+                logger.LogError($"An error occurred while trying to apply patches for LethalConfig: {e.Message}");
             }
         }
 
@@ -334,6 +596,19 @@ namespace FairAI
             try
             {
                 int.TryParse(Instance.Config[parentIdentifier, identifier].BoxedValue.ToString(), out int result);
+                return result;
+            }
+            catch
+            {
+                return 1;
+            }
+        }
+
+        public static float GetFloat(string parentIdentifier, string identifier)
+        {
+            try
+            {
+                float.TryParse(Instance.Config[parentIdentifier, identifier].BoxedValue.ToString(), out float result);
                 return result;
             }
             catch

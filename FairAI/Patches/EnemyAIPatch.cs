@@ -1,8 +1,4 @@
-﻿using GameNetcodeStuff;
-using System.Reflection;
-using UnityEngine;
-
-namespace FairAI.Patches
+﻿namespace FairAI.Patches
 {
     internal class EnemyAIPatch
     {

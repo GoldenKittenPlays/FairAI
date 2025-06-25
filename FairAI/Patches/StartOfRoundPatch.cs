@@ -1,5 +1,6 @@
 ﻿using BepInEx.Configuration;
-using System.Collections.Generic;
+using LethalConfig.ConfigItems;
+using LethalConfig;
 using System.Linq;
 using UnityEngine;
 
@@ -10,9 +11,9 @@ namespace FairAI.Patches
         public static void PatchStart(ref StartOfRound __instance)
         {
             //This happens at the end of waiting for entrance teleport spawn
-            if (!Plugin.itemList.SequenceEqual(Plugin.items) || Plugin.items.Count <= 0)
+            if (!Plugin.itemList.SequenceEqual(Plugin.items) || Plugin.items.Count == 0)
             {
-                Plugin.items = Resources.FindObjectsOfTypeAll(typeof(Item)).Cast<Item>().Where(i => i != null).ToList();
+                Plugin.items = Resources.FindObjectsOfTypeAll<Item>().ToList();
                 Plugin.itemList = Plugin.items;
             }
             Plugin.allHittablesMask = StartOfRound.Instance.collidersRoomMaskDefaultAndPlayers | 2621448 | Plugin.enemyMask;
@@ -22,16 +23,20 @@ namespace FairAI.Patches
                 "ImmortalAffected", // The key of the configuration option in the configuration file
                                              false, // The default value
                                              "If set to on/true immortal enemies will be targeted and trip off traps."); // Description
-                if (!(Plugin.enemies.Count <= 0))
+                if (Plugin.lethalConfigEnabled)
+                {
+                    LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
+                }
+                if (Plugin.enemies.Count == 0)
                 {
                     if (!Plugin.GetBool("General", "ImmortalAffected"))
                     {
-                        Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
+                        Plugin.enemies = Resources.FindObjectsOfTypeAll<EnemyType>().Where(e => e.canDie).ToList();
                         Plugin.enemyList = Plugin.enemies;
                     }
                     else
                     {
-                        Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
+                        Plugin.enemies = Resources.FindObjectsOfTypeAll<EnemyType>().Where(e => e != null).ToList();
                         Plugin.enemyList = Plugin.enemies;
                     }
                 }
@@ -39,15 +44,33 @@ namespace FairAI.Patches
                 {
                     if (!Plugin.GetBool("General", "ImmortalAffected"))
                     {
-                        Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
+                        Plugin.enemies = Resources.FindObjectsOfTypeAll<EnemyType>().Where(e => e != null && e.canDie).ToList();
                         Plugin.enemyList = Plugin.enemies;
                     }
                     else
                     {
-                        Plugin.enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null).ToList();
+                        Plugin.enemies = Resources.FindObjectsOfTypeAll<EnemyType>().Where(e => e != null).ToList();
                         Plugin.enemyList = Plugin.enemies;
                     }
                 }
+            }
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Quick Sand Config", "Sink Time")))
+            {
+                ConfigEntry<float> tempEntry = Plugin.Instance.Config.Bind("Quick Sand Config", // Section Title
+                "Sink Time", // The key of the configuration option in the configuration file
+                                             5f, // The default value
+                                             "Time Until A Enemy Is Considered Sunk And Will Be Killed"); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new FloatInputFieldConfigItem(tempEntry));
+            }
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Quick Sand Config", "Slowing Speed")))
+            {
+                ConfigEntry<float> tempEntry = Plugin.Instance.Config.Bind("Quick Sand Config", // Section Title
+                "Slowing Speed", // The key of the configuration option in the configuration file
+                                             33f, // The default value
+                                             "Percentage of Original Speed Enemies Move In Quick Sand"); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new FloatInputFieldConfigItem(tempEntry));
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("TurretConfig", "Enemy Damage")))
             {
@@ -55,14 +78,17 @@ namespace FairAI.Patches
                 "Enemy Damage", // The key of the configuration option in the configuration file
                                              1f, // The default value
                                              "Damage Turrets will Do To Enemies"); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new FloatInputFieldConfigItem(tempEntry));
             }
-
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("TurretConfig", "Player Damage")))
             {
                 ConfigEntry<float> tempEntry = Plugin.Instance.Config.Bind("TurretConfig", // Section Title
                 "Player Damage", // The key of the configuration option in the configuration file
                                              50f, // The default value
                                              "Damage Turrets will Do To Players"); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new FloatInputFieldConfigItem(tempEntry));
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("TurretConfig", "HitOtherTurrets")))
             {
@@ -70,6 +96,8 @@ namespace FairAI.Patches
                 "HitOtherTurrets", // The key of the configuration option in the configuration file
                                              false, // The default value
                                              "If turrets can hit other turrets when firing.(Does not make them target other turrets)"); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "ExplodeAllMobs")))
             {
@@ -77,6 +105,8 @@ namespace FairAI.Patches
                 "ExplodeAllMobs", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Leave On To Customise Mobs Below Or Turn Off To Make All Mobs Unable To Set Off Mines."); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "BoombaAllMobs")))
             {
@@ -84,6 +114,8 @@ namespace FairAI.Patches
                 "BoombaAllMobs", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Leave On To Customise Mobs Below Or Turn Off To Make All Mobs Unable To Set Off Boombas."); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "SeamineAllMobs")))
             {
@@ -91,6 +123,8 @@ namespace FairAI.Patches
                 "SeamineAllMobs", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Leave On To Customise Mobs Below Or Turn Off To Make All Mobs Unable To Set Off Seamines."); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "BerthaAllMobs")))
             {
@@ -98,6 +132,8 @@ namespace FairAI.Patches
                 "BerthaAllMobs", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Leave On To Customise Mobs Below Or Turn Off To Make All Mobs Unable To Set Off Big Berthas."); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "TurretTargetAllMobs")))
             {
@@ -105,6 +141,8 @@ namespace FairAI.Patches
                 "TurretTargetAllMobs", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Leave On To Customise Mobs Below Or Turn Off To Make All Mobs Unable To Be Targeted By Turrets."); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "TurretDamageAllMobs")))
             {
@@ -112,6 +150,8 @@ namespace FairAI.Patches
                 "TurretDamageAllMobs", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Leave On To Customise Mobs Below Or Turn Off To Make All Mobs Unable To Be Killed By Turrets."); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
             }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", "CheckForPlayersInside")))
             {
@@ -119,6 +159,8 @@ namespace FairAI.Patches
                 "CheckForPlayersInside", // The key of the configuration option in the configuration file
                                              false, // The default value
                                              "Whether to check for players inside the dungeon before anything else occurs."); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
             }
             foreach (EnemyType enemy in Plugin.enemies)
             {
@@ -129,6 +171,8 @@ namespace FairAI.Patches
                                              mobName + ".Mine", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Does it set off the landmine or not?"); // Description
+                    if (Plugin.lethalConfigEnabled)
+                        LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
                 }
                 if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", mobName + ".Seamine")))
                 {
@@ -136,6 +180,8 @@ namespace FairAI.Patches
                                              mobName + ".Seamine", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Does it set off the Surfaced Seamine or not?"); // Description
+                    if (Plugin.lethalConfigEnabled)
+                        LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
                 }
                 if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", mobName + ".Bertha")))
                 {
@@ -143,6 +189,8 @@ namespace FairAI.Patches
                                              mobName + ".Bertha", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Does it set off the Surfaced Big Bertha or not?"); // Description
+                    if (Plugin.lethalConfigEnabled)
+                        LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
                 }
                 if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", mobName + ".Boomba")))
                 {
@@ -150,6 +198,8 @@ namespace FairAI.Patches
                                              mobName + ".Boomba", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Does it set off the LethalThings Boomba or not?"); // Description
+                    if (Plugin.lethalConfigEnabled)
+                        LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
                 }
                 if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", mobName + ".Turret Target")))
                 {
@@ -157,6 +207,8 @@ namespace FairAI.Patches
                                              mobName + ".Turret Target", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Is it targetable by turrets?"); // Description
+                    if (Plugin.lethalConfigEnabled)
+                        LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
                 }
                 if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Mobs", mobName + ".Turret Damage")))
                 {
@@ -164,6 +216,8 @@ namespace FairAI.Patches
                                              mobName + ".Turret Damage", // The key of the configuration option in the configuration file
                                              true, // The default value
                                              "Is it damageable by turrets?"); // Description
+                    if (Plugin.lethalConfigEnabled)
+                        LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
                 }
             }
         }
@@ -180,6 +234,16 @@ namespace FairAI.Patches
                 {
                     Plugin.playersEnteredInside = Plugin.IsAPlayerInsideDungeon();
                 }
+            }
+            if (__instance.shipHasLanded && !Plugin.roundHasStarted)
+            {
+                Plugin.speeds = new System.Collections.Generic.Dictionary<string, float[]>();
+                Plugin.roundHasStarted = true;
+            }
+
+            if (__instance.shipIsLeaving)
+            {
+                Plugin.roundHasStarted = false;
             }
             //Plugin.ImmortalAffected();
         }
