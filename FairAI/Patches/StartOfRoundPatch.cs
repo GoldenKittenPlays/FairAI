@@ -54,6 +54,15 @@ namespace FairAI.Patches
                     }
                 }
             }
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("ExplosionConfig", "Damage")))
+            {
+                ConfigEntry<float> tempEntry = Plugin.Instance.Config.Bind("ExplosionConfig", // Section Title
+                "Damage", // The key of the configuration option in the configuration file
+                                             1f, // The default value
+                                             "Damage explosions will do outside the kill radius"); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new FloatInputFieldConfigItem(tempEntry));
+            }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Quick Sand Config", "Sink Time")))
             {
                 ConfigEntry<float> tempEntry = Plugin.Instance.Config.Bind("Quick Sand Config", // Section Title
