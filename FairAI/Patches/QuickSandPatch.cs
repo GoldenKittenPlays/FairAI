@@ -16,29 +16,6 @@ namespace FairAI.Patches
                 }
                 if (other.gameObject.GetComponent<EnemyAICollisionDetect>() != null)
                 {
-                    EnemyAICollisionDetect enemyAI = other.gameObject.GetComponent<EnemyAICollisionDetect>();
-                    if (enemyAI != null)
-                    {
-                        EnemyAI ai = enemyAI.mainScript;
-                        if (ai != null)
-                        {
-                            if (ai.agent != null)
-                            {
-                                NavMeshAgent agent = ai.agent;
-                                float[] speeds = Plugin.SpeedAndAccelerationEnemyList(enemyAI);
-                                float newSpeed = Plugin.GetInt("Quick Sand Config", "Slowing Speed") * 0.01f;
-                                if (speeds[0] * newSpeed != agent.speed)
-                                {
-                                    agent.speed = speeds[0] * newSpeed;
-                                }
-                                if (speeds[1] * newSpeed != agent.acceleration)
-                                {
-                                    agent.acceleration = speeds[1] * newSpeed;
-                                }
-                            }
-                            SetSinking(enemyAI);
-                        }
-                    }
                     return false;
                 }
                 else
@@ -111,54 +88,62 @@ namespace FairAI.Patches
                     }
                 }
             }
-            else
+            if (other.gameObject.GetComponent<EnemyAICollisionDetect>() != null)
             {
-                if (other.gameObject.GetComponent<EnemyAICollisionDetect>() != null)
+                EnemyAICollisionDetect enemyAI = other.gameObject.GetComponent<EnemyAICollisionDetect>();
+                if (enemyAI != null)
                 {
-                    EnemyAICollisionDetect enemyAI = other.gameObject.GetComponent<EnemyAICollisionDetect>();
-                    if (enemyAI != null)
+                    EnemyAI ai = enemyAI.mainScript;
+                    if (ai != null)
                     {
-                        EnemyAI ai = enemyAI.mainScript;
-                        if (ai != null)
+                        if (ai.agent != null)
                         {
-                            if (ai.agent != null)
+                            NavMeshAgent agent = ai.agent;
+                            float[] speeds = Plugin.SpeedAndAccelerationEnemyList(enemyAI);
+                            float newSpeed = Plugin.GetInt("Quick Sand Config", "Slowing Speed") * 0.01f;
+                            if (speeds[0] * newSpeed != agent.speed)
                             {
-                                NavMeshAgent agent = ai.agent;
-                                float[] speeds = Plugin.SpeedAndAccelerationEnemyList(enemyAI);
-                                float newSpeed = Plugin.GetInt("Quick Sand Config", "Slowing Speed") * 0.01f;
-                                if (speeds[0] * newSpeed != agent.speed)
-                                {
-                                    agent.speed = speeds[0] * newSpeed;
-                                }
-                                if (speeds[1] * newSpeed != agent.acceleration)
-                                {
-                                    agent.acceleration = speeds[1] * newSpeed;
-                                }
+                                agent.speed = speeds[0] * newSpeed;
                             }
-                            SetSinking(enemyAI);
+                            if (speeds[1] * newSpeed != agent.acceleration)
+                            {
+                                agent.acceleration = speeds[1] * newSpeed;
+                            }
                         }
+                        SetSinking(enemyAI);
                     }
-                    return false;
                 }
             }
             return false;
         }
 
-        public static void OnTriggerExitPatch(ref QuicksandTrigger __instance, Collider other)
+        public static bool OnTriggerExitPatch(ref QuicksandTrigger __instance, Collider other)
         {
             if (other.gameObject.GetComponent<EnemyAICollisionDetect>() != null)
             {
                 EnemyAICollisionDetect enemyAI = other.gameObject.GetComponent<EnemyAICollisionDetect>();
                 EnemyAI ai = enemyAI.mainScript;
                 float[] speeds = Plugin.SpeedAndAccelerationEnemyList(enemyAI);
+
                 ai.agent.speed = speeds[0];
                 ai.agent.acceleration = speeds[1];
                 enemyAI.transform.position = new Vector3(enemyAI.transform.position.x, Plugin.positions[enemyAI.GetInstanceID()].y, enemyAI.transform.position.z);
+                Plugin.sinkingValues[enemyAI.GetInstanceID()] = 0f;
+                Plugin.sinkingProgress[enemyAI.GetInstanceID()] = 0;
             }
+            else
+            {
+                __instance.OnExit(other);
+            }
+            return false;
         }
 
         public static void SetSinking(EnemyAICollisionDetect enemy)
         {
+            if (!Plugin.sinkingProgress.ContainsKey(enemy.GetInstanceID()))
+            {
+                Plugin.sinkingProgress.Add(enemy.GetInstanceID(), 0f);
+            }
             if (!Plugin.positions.ContainsKey(enemy.GetInstanceID()))
             {
                 Plugin.positions.Add(enemy.GetInstanceID(), enemy.transform.position);
@@ -173,17 +158,19 @@ namespace FairAI.Patches
             float height = enemy.GetComponent<Collider>().bounds.size.y;
 
             // Use height to scale sink distance or time
-            float sinkSpeed = height * 0.5f;
-            float sinkStep = Time.deltaTime * sinkSpeed;
+            float heightModifier = height * 0.5f;
+
+            Plugin.sinkingProgress[enemy.GetInstanceID()] = Mathf.Clamp((Time.deltaTime / Plugin.GetFloat("Quick Sand Config", "Sink Time") / heightModifier), 0, 1);
+
 
             // Sink toward a target offset (e.g., fully underground)
             Vector3 targetPos = enemy.transform.position - Vector3.up * height;
-            enemy.transform.position = Vector3.Lerp(enemy.transform.position, targetPos, sinkStep);
+            enemy.transform.position = Vector3.Lerp(enemy.transform.position, targetPos, Plugin.sinkingProgress[enemy.GetInstanceID()]);
 
-            sinkingValue = Mathf.Clamp(sinkingValue + Time.deltaTime * 0.75f, 0f, Plugin.GetFloat("Quick Sand Config", "Sink Time"));
+            sinkingValue = Mathf.Clamp(sinkingValue + (Time.deltaTime * 0.75f), 0f, Plugin.GetFloat("Quick Sand Config", "Sink Time"));
             if (Plugin.sinkingValues[enemy.GetInstanceID()] >= Plugin.GetFloat("Quick Sand Config", "Sink Time") - 0.01f)
             {
-                enemy.mainScript.KillEnemy();
+                enemy.mainScript.KillEnemyOnOwnerClient(enemy.mainScript.enemyType.destroyOnDeath);
             }
             if (enemy != null)
             {

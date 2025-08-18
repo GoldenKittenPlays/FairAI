@@ -119,7 +119,7 @@ namespace FairAI.Patches
                             }
                             else if (num2 < damageRange)
                             {
-                                enemy.mainScript.HitEnemyOnLocalClient(Mathf.RoundToInt(enemy.mainScript.enemyHP / 2));
+                                enemy.mainScript.HitEnemyOnLocalClient(Mathf.RoundToInt(Plugin.GetFloat("ExplosionConfig", "Damage")));
                             }
                         }
                     }

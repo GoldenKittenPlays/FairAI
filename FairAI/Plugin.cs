@@ -24,6 +24,8 @@ namespace FairAI
 
         private Harmony harmony = new Harmony(modGUID);
 
+        private static float onMeshThreshold = 3;
+
         public static Plugin Instance;
 
         public static ManualLogSource logger;
@@ -43,6 +45,8 @@ namespace FairAI
         public static Dictionary<int, Vector3> positions;
 
         public static Dictionary<int, float> sinkingValues;
+
+        public static Dictionary<int, float> sinkingProgress;
 
         public static Assembly surfacedAssembly;
 
@@ -64,8 +68,6 @@ namespace FairAI
         public static int enemyMask = (1 << 19);
         public static int allHittablesMask;
 
-        static float onMeshThreshold = 3;
-
         private async void Awake()
         {
             if (Instance == null)
@@ -78,6 +80,7 @@ namespace FairAI
             enemyList = new List<EnemyType>();
             speeds = new Dictionary<string, float[]>();
             positions = new Dictionary<int, Vector3>();
+            sinkingProgress = new Dictionary<int, float>();
             turretSettings = new List<float>();
             sinkingValues = new Dictionary<int, float>();
             surfacedAssembly = null;
