@@ -10,7 +10,7 @@ namespace FairAI.Patches
         {
             if (Plugin.GetBool("Quick Sand Config", "Disable Quicksand Interactions"))
             {
-                return false;
+                return true;
             }
             if (__instance.isWater)
             {
@@ -125,7 +125,7 @@ namespace FairAI.Patches
         {
             if (Plugin.GetBool("Quick Sand Config", "Disable Quicksand Interactions"))
             {
-                return false;
+                return true;
             }
             if (other.gameObject.GetComponent<EnemyAICollisionDetect>() != null)
             {
