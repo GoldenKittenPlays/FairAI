@@ -72,6 +72,15 @@ namespace FairAI.Patches
                 if (Plugin.lethalConfigEnabled)
                     LethalConfigManager.AddConfigItem(new FloatInputFieldConfigItem(tempEntry));
             }
+            if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Quick Sand Config", "Disable Quicksand Interactions")))
+            {
+                ConfigEntry<bool> tempEntry = Plugin.Instance.Config.Bind("Quick Sand Config", // Section Title
+                    "Disable Quicksand Interactions", // The key of the configuration option in the configuration file
+                    false, // The default value
+                    "Leave off to enable sinking enemies in quicksand, or turn on to disable enemy quicksand interactions."); // Description
+                if (Plugin.lethalConfigEnabled)
+                    LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(tempEntry));
+            }
             if (!Plugin.Instance.Config.ContainsKey(new ConfigDefinition("Quick Sand Config", "Slowing Speed")))
             {
                 ConfigEntry<float> tempEntry = Plugin.Instance.Config.Bind("Quick Sand Config", // Section Title

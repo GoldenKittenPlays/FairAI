@@ -8,6 +8,10 @@ namespace FairAI.Patches
     {
         public static bool OnTriggerStayPatch(ref QuicksandTrigger __instance, Collider other)
         {
+            if (Plugin.GetBool("Quick Sand Config", "Disable Quicksand Interactions"))
+            {
+                return false;
+            }
             if (__instance.isWater)
             {
                 if (!other.gameObject.CompareTag("Player") && other.gameObject.GetComponent<EnemyAICollisionDetect>() == null)
@@ -119,6 +123,10 @@ namespace FairAI.Patches
 
         public static bool OnTriggerExitPatch(ref QuicksandTrigger __instance, Collider other)
         {
+            if (Plugin.GetBool("Quick Sand Config", "Disable Quicksand Interactions"))
+            {
+                return false;
+            }
             if (other.gameObject.GetComponent<EnemyAICollisionDetect>() != null)
             {
                 EnemyAICollisionDetect enemyAI = other.gameObject.GetComponent<EnemyAICollisionDetect>();
