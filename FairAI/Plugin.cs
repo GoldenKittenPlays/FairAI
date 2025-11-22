@@ -1,4 +1,4 @@
-﻿using BepInEx;
+using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using FairAI.Patches;
@@ -20,15 +20,17 @@ namespace FairAI
     [BepInDependency(surfacedModID, BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
-        private const string modGUID = "GoldenKitten.FairAI", modName = "Fair AI", modVersion = "1.5.1";
+        private const string modGUID = "GoldenKitten.FairAI", modName = "Fair AI", modVersion = "1.5.4";
 
-        private Harmony harmony = new Harmony(modGUID);
+        private Harmony harmony = new(modGUID);
 
         private static float onMeshThreshold = 3;
 
         public static Plugin Instance;
 
         public static ManualLogSource logger;
+
+        public static List<EnemyType> allEnemies;
 
         public static List<EnemyType> enemies;
 
@@ -41,16 +43,16 @@ namespace FairAI
         public static List<float> turretSettings;
 
         public static Dictionary<string, float[]> speeds;
-
         public static Dictionary<int, Vector3> positions;
-
         public static Dictionary<int, float> sinkingValues;
-
         public static Dictionary<int, float> sinkingProgress;
 
         public static Assembly surfacedAssembly;
-
+        public static Assembly lguAssembly;
+        public static Assembly lethalConfigAssembly;
         public static Assembly turretSettingsAssembly;
+
+        public static Type rubberBootsType;
 
         public static PropertyInfo tsBoundConfig;
 
@@ -61,6 +63,7 @@ namespace FairAI
         public static bool surfacedEnabled = false;
         public static bool lethalThingsEnabled = false;
         public static bool turretSettingsEnabled = false;
+        public static bool lguEnabled = false;
         public static bool lethalConfigEnabled = false;
         public static bool roundHasStarted = false;
 
@@ -74,29 +77,33 @@ namespace FairAI
             {
                 Instance = this;
             }
-            enemies = new List<EnemyType>();
-            items = new List<Item>();
-            itemList = new List<Item>();
-            enemyList = new List<EnemyType>();
-            speeds = new Dictionary<string, float[]>();
-            positions = new Dictionary<int, Vector3>();
-            sinkingProgress = new Dictionary<int, float>();
-            turretSettings = new List<float>();
-            sinkingValues = new Dictionary<int, float>();
+            allEnemies = [];
+            enemies = [];
+            items = [];
+            itemList = [];
+            enemyList = [];
+            speeds = [];
+            positions = [];
+            sinkingProgress = [];
+            turretSettings = [];
+            sinkingValues = [];
             surfacedAssembly = null;
+            lguAssembly = null;
             harmony = new Harmony(modGUID);
             logger = BepInEx.Logging.Logger.CreateLogSource(modGUID);
             harmony.PatchAll(typeof(Plugin));
             CreateHarmonyPatch(harmony, typeof(RoundManager), "Start", null, typeof(RoundManagerPatch), nameof(RoundManagerPatch.PatchStart), false);
+            CreateHarmonyPatch(harmony, typeof(StartOfRound), "Awake", null, typeof(LevelGenManPatch), nameof(LevelGenManPatch.PatchAwake), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Start", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Update", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchUpdate), false);
-            CreateHarmonyPatch(harmony, typeof(QuicksandTrigger), "OnTriggerStay", new[] { typeof(Collider) }, typeof(QuickSandPatch), nameof(QuickSandPatch.OnTriggerStayPatch), true);
-            CreateHarmonyPatch(harmony, typeof(QuicksandTrigger), "OnTriggerExit", new[] { typeof(Collider)}, typeof(QuickSandPatch), nameof(QuickSandPatch.OnTriggerExitPatch), true);
+            CreateHarmonyPatch(harmony, typeof(QuicksandTrigger), "OnTriggerStay", [typeof(Collider)], typeof(QuickSandPatch), nameof(QuickSandPatch.OnTriggerStayPatch), true);
+            CreateHarmonyPatch(harmony, typeof(QuicksandTrigger), "StopSinkingLocalPlayer", [typeof(PlayerControllerB)], typeof(QuickSandPatch), nameof(QuickSandPatch.StopSinkingLocalPlayerPatch), true);
+            CreateHarmonyPatch(harmony, typeof(QuicksandTrigger), "OnTriggerExit", [typeof(Collider)], typeof(QuickSandPatch), nameof(QuickSandPatch.OnTriggerExitPatch), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchUpdate), true);
-            CreateHarmonyPatch(harmony, typeof(Turret), "CheckForPlayersInLineOfSight", new[] { typeof(float), typeof(bool) }, typeof(TurretAIPatch), nameof(TurretAIPatch.CheckForTargetsInLOS), true);
+            CreateHarmonyPatch(harmony, typeof(Turret), "CheckForPlayersInLineOfSight", [typeof(float), typeof(bool)], typeof(TurretAIPatch), nameof(TurretAIPatch.CheckForTargetsInLOS), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.SetTargetToEnemyBody), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.TurnTowardsTargetEnemyIfHasLOS), true);
-            CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", new[] { typeof(Vector3), typeof(bool), typeof(float), typeof(float), typeof(int), typeof(float), typeof(GameObject), typeof(bool) }, typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
+            CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", [typeof(Vector3), typeof(bool), typeof(float), typeof(float), typeof(int), typeof(float), typeof(GameObject), typeof(bool)], typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerEnter", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerEnter), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "OnTriggerExit", null, typeof(MineAIPatch), nameof(MineAIPatch.PatchOnTriggerExit), false);
             CreateHarmonyPatch(harmony, typeof(Landmine), "Detonate", null, typeof(MineAIPatch), nameof(MineAIPatch.DetonatePatch), false);
@@ -109,8 +116,9 @@ namespace FairAI
         {
             if(!GetBool("General", "ImmortalAffected"))
             {
-                enemies = Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie).ToList();
+                enemies = [.. Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null && e.canDie)];
             }
+            allEnemies = [.. Resources.FindObjectsOfTypeAll(typeof(EnemyType)).Cast<EnemyType>().Where(e => e != null)];
         }
 
         public static float[] SpeedAndAccelerationEnemyList(EnemyAICollisionDetect enemy)
@@ -121,7 +129,7 @@ namespace FairAI
                 if (enemy.mainScript != null)
                 {
                     EnemyType eType = ai.enemyType;
-                    string name = eType.enemyName;
+                    string name = RemoveInvalidCharacters(eType.enemyName);
                     if (eType != null)
                     {
                         if (GetSpeeds(enemy) == null)
@@ -129,18 +137,18 @@ namespace FairAI
                             NavMeshAgent agent = ai.GetComponentInChildren<NavMeshAgent>();
                             if (agent != null)
                             {
-                                speeds.Add(eType.enemyName, new float[] { agent.speed, agent.acceleration });
-                                return speeds[eType.enemyName];
+                                speeds.Add(name, [agent.speed, agent.acceleration]);
+                                return speeds[name];
                             }
                             else
                             {
-                                speeds.Add(eType.enemyName, new float[] { 1, 1 });
-                                return speeds[eType.enemyName];
+                                speeds.Add(name, [1, 1]);
+                                return speeds[name];
                             }
                         }
                         else
                         {
-                            return speeds[eType.enemyName];
+                            return speeds[name];
                         }
                     }
                 }
@@ -153,19 +161,19 @@ namespace FairAI
             {
                 logger.LogWarning("No EnemyCollision To Get Speeds!");
             }
-            return new float[] { 1, 1 };
+            return [1, 1];
         }
 
         public static float[] GetSpeeds(EnemyAICollisionDetect enemy)
         {
             EnemyType eType = enemy.mainScript.enemyType;
-            if (speeds.TryGetValue(eType.enemyName, out float[] values))
+            if (speeds.TryGetValue(RemoveInvalidCharacters(eType.enemyName), out float[] values))
             {
                 return values;
             }
             else
             {
-                logger.LogWarning($"Speeds missing on: {eType.enemyName}");
+                logger.LogWarning($"Speeds missing on: {RemoveInvalidCharacters(eType.enemyName)}");
                 return null;
             }
         }
@@ -270,7 +278,7 @@ namespace FairAI
             }
             else
             {
-                turretSettings = new List<float>();
+                turretSettings = [];
             }
         }
 
@@ -283,7 +291,7 @@ namespace FairAI
                 await Instance.DelayedInitialization();
                 done = true;
             }
-            return new List<int>() { };
+            return [];
         }
 
         private async Task DelayedInitialization()
@@ -294,6 +302,7 @@ namespace FairAI
                 TryLoadSurfaced();
                 TryLoadTurretSettings();
                 TryLoadLethalConfig();
+                TryLoadLategameUpgrades();
                 logger.LogInfo("Optional Components initiated!");
             });
         }
@@ -338,7 +347,9 @@ namespace FairAI
             }
             catch (Exception e)
             {
-                logger.LogError($"An error occurred while trying to apply patches for LethalThings: {e.Message}");
+                if (!e.Message.Contains("Could not load the file")) {
+                    logger.LogError($"An error occurred while trying to apply patches for LethalThings: {e.Message}");
+                }
             }
         }
 
@@ -366,7 +377,7 @@ namespace FairAI
                     {
                         if (SurfacedMinePatch.enabled)
                         {
-                            CreateHarmonyPatch(harmony, surfacedType, "OnTriggerEnter", new[] { typeof(Collider) }, typeof(SurfacedMinePatch), nameof(SurfacedMinePatch.PatchOnTriggerEnter), false);
+                            CreateHarmonyPatch(harmony, surfacedType, "OnTriggerEnter", [typeof(Collider)], typeof(SurfacedMinePatch), nameof(SurfacedMinePatch.PatchOnTriggerEnter), false);
                             surfacedEnabled = true;
                             logger.LogInfo("Surfaced Component Seamine Initiated!");
                         }
@@ -380,7 +391,7 @@ namespace FairAI
                     {
                         if (SurfacedMinePatch.enabled)
                         {
-                            CreateHarmonyPatch(harmony, berthaType, "OnTriggerEnter", new[] { typeof(Collider) }, typeof(SurfacedMinePatch), nameof(SurfacedMinePatch.PatchBerthaOnTriggerEnter), false);
+                            CreateHarmonyPatch(harmony, berthaType, "OnTriggerEnter", [typeof(Collider)], typeof(SurfacedMinePatch), nameof(SurfacedMinePatch.PatchBerthaOnTriggerEnter), false);
                             surfacedEnabled = true;
                             logger.LogInfo("Surfaced Component Bertha Initiated!");
                         }
@@ -397,7 +408,10 @@ namespace FairAI
             }
             catch (Exception e)
             {
-                logger.LogError($"An error occurred while trying to apply patches for Surfaced: {e.Message}");
+                if (!e.Message.Contains("Could not load the file"))
+                {
+                    logger.LogError($"An error occurred while trying to apply patches for Surfaced: {e.Message}");
+                }
             }
         }
 
@@ -436,7 +450,52 @@ namespace FairAI
             }
             catch (Exception e)
             {
-                logger.LogError($"An error occurred while trying to apply patches for TurretSettings: {e.Message}");
+                if (!e.Message.Contains("Could not load the file"))
+                {
+                    logger.LogError($"An error occurred while trying to apply patches for TurretSettings: {e.Message}");
+                }
+            }
+        }
+
+        private void TryLoadLategameUpgrades()
+        {
+            try
+            {
+                Assembly tsAssembly = Assembly.Load("MoreShipUpgrades");
+                if (tsAssembly != null)
+                {
+                    lguAssembly = tsAssembly;
+                    Type rbType = lguAssembly.GetType("MoreShipUpgrades.UpgradeComponents.TierUpgrades.Player.RubberBoots");
+                    if (rbType != null)
+                    {
+                        MethodInfo method = rbType.GetMethod("ReduceMovementHinderance");
+                        if (method != null)
+                        {
+                            rubberBootsType = rbType;
+                            lguEnabled = true;
+                            logger.LogInfo("LategameUpgrades Component Initiated!");
+                        }
+                        else
+                        {
+                            logger.LogWarning("LategameUpgrades not found. Skipping optional patch.");
+                        }
+                    }
+                    else
+                    {
+                        logger.LogWarning("LategameUpgrades type not found. Skipping optional patch.");
+                    }
+                }
+                else
+                {
+                    logger.LogWarning("LategameUpgrades assembly not found. Skipping optional patch.");
+                }
+            }
+            catch (Exception e)
+            {
+                if (!e.Message.Contains("Could not load the file"))
+                {
+                    logger.LogError($"An error occurred while trying to apply patches for LategameUpgrades: {e.Message}");
+                }
             }
         }
 
@@ -446,7 +505,7 @@ namespace FairAI
             {
                 // Get all loaded assemblies
                 Assembly[] loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
-                Assembly lethalConfigAssembly = null;
+                lethalConfigAssembly = null;
                 // Find the LethalThings assembly
                 foreach (var assembly in loadedAssemblies)
                 {
@@ -474,14 +533,17 @@ namespace FairAI
             }
             catch (Exception e)
             {
-                logger.LogError($"An error occurred while trying to apply patches for LethalConfig: {e.Message}");
+                if (!e.Message.Contains("Could not load the file"))
+                {
+                    logger.LogError($"An error occurred while trying to apply patches for LethalConfig: {e.Message}");
+                }
             }
         }
 
         public static List<PlayerControllerB> GetActivePlayers()
         {
             PlayerControllerB[] players = StartOfRound.Instance.allPlayerScripts;
-            List<PlayerControllerB> list = new List<PlayerControllerB>();
+            List<PlayerControllerB> list = [];
             foreach (PlayerControllerB val in players)
             {
                 if ((UnityEngine.Object)(object)val != (UnityEngine.Object)null && !val.isPlayerDead && ((Behaviour)val).isActiveAndEnabled && val.isPlayerControlled)
@@ -518,7 +580,7 @@ namespace FairAI
         {
             if (StartOfRound.Instance.shipHasLanded)
             {
-                List<PlayerControllerB> list = Plugin.GetActivePlayers();
+                List<PlayerControllerB> list = GetActivePlayers();
                 for (int i = 0; i < list.Count; i++)
                 {
                     PlayerControllerB player = list[i];
@@ -535,7 +597,7 @@ namespace FairAI
         {
             if (StartOfRound.Instance.shipHasLanded)
             {
-                List<PlayerControllerB> list = Plugin.GetActivePlayers();
+                List<PlayerControllerB> list = GetActivePlayers();
                 for (int i = 0; i < list.Count; i++)
                 {
                     PlayerControllerB player = list[i];
@@ -552,7 +614,7 @@ namespace FairAI
         {
             if (StartOfRound.Instance.shipHasLanded)
             {
-                List<PlayerControllerB> list = Plugin.GetActivePlayers();
+                List<PlayerControllerB> list = GetActivePlayers();
                 for (int i = 0; i < list.Count; i++)
                 {
                     PlayerControllerB player = list[i];
@@ -622,7 +684,7 @@ namespace FairAI
 
         public static bool GetBool(string parentIdentifier, string identifier)
         {
-            string result = RemoveInvalidCharacters(Instance.Config[parentIdentifier, identifier].BoxedValue.ToString()).ToUpper();
+            string result = Instance.Config[parentIdentifier, identifier].BoxedValue.ToString().ToUpper();
             if (result.Equals("TRUE"))
             {
                 return true;
@@ -640,7 +702,7 @@ namespace FairAI
 
         public static string RemoveSpecialCharacters(string source)
         {
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
             foreach (char c in source)
             {
                 if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
@@ -716,10 +778,9 @@ namespace FairAI
         public static bool IsAgentOnNavMesh(GameObject agentObject)
         {
             Vector3 agentPosition = agentObject.transform.position;
-            NavMeshHit hit;
 
             // Check for nearest point on navmesh to agent, within onMeshThreshold
-            if (NavMesh.SamplePosition(agentPosition, out hit, onMeshThreshold, NavMesh.AllAreas))
+            if (NavMesh.SamplePosition(agentPosition, out NavMeshHit hit, onMeshThreshold, NavMesh.AllAreas))
             {
                 // Check if the positions are vertically aligned
                 if (Mathf.Approximately(agentPosition.x, hit.position.x)
@@ -740,8 +801,8 @@ namespace FairAI
 
         public static List<GameObject> GetTargets(FAIR_AI turret_ai, Vector3 aimPoint, Vector3 forward, float range)
         {
-            List<GameObject> targets = new List<GameObject>();
-            Ray ray = new Ray(aimPoint, forward);
+            List<GameObject> targets = [];
+            Ray ray = new(aimPoint, forward);
             RaycastHit[] hits = Physics.RaycastAll(ray, range, -5, QueryTriggerInteraction.Collide);
             Array.Sort(hits, (x, y) => x.distance.CompareTo(y.distance));
             Vector3 end = aimPoint + forward * range;
@@ -763,9 +824,9 @@ namespace FairAI
                             targets.Add(hit.gameObject);
                         }
                     }
-                    if (!(hittable is EnemyAICollisionDetect) && !(hittable is PlayerControllerB) && !(hittable is SandSpiderWebTrap))
+                    if ((hittable is not EnemyAICollisionDetect) && (hittable is not PlayerControllerB) && (hittable is not SandSpiderWebTrap))
                     {
-                        if (!(hittable is Turret))
+                        if (hittable is not Turret)
                         {
                             hittable.Hit(1, end);
                         }
@@ -798,7 +859,7 @@ namespace FairAI
 
         public static List<EnemyAICollisionDetect> GetEnemyTargets(List<GameObject> originalTargets)
         {
-            List<EnemyAICollisionDetect> hits = new List<EnemyAICollisionDetect>();
+            List<EnemyAICollisionDetect> hits = [];
             originalTargets.ForEach(t =>
             {
                 if (t != null)
@@ -806,9 +867,8 @@ namespace FairAI
                     if (t.GetComponent<IHittable>() != null)
                     {
                         IHittable hit = t.GetComponent<IHittable>();
-                        if (hit is EnemyAICollisionDetect)
+                        if (hit is EnemyAICollisionDetect enemy)
                         {
-                            EnemyAICollisionDetect enemy = (EnemyAICollisionDetect)hit;
                             hits.Add(enemy);
                         }
                     }
@@ -836,9 +896,9 @@ namespace FairAI
                             int damage = GetInt("TurretConfig", "Enemy Damage");
                             if (CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.enemyType.enemyName))
                             {
-                                if (enemy is NutcrackerEnemyAI)
+                                if (enemy is NutcrackerEnemyAI ncAI)
                                 {
-                                    if (((NutcrackerEnemyAI)enemy).currentBehaviourStateIndex > 0)
+                                    if (ncAI.currentBehaviourStateIndex > 0)
                                     {
                                         enemy.HitEnemyOnLocalClient(damage);
                                         hits = true;
@@ -854,15 +914,14 @@ namespace FairAI
                         else if (t.GetComponent<IHittable>() != null)
                         {
                             IHittable hit = t.GetComponent<IHittable>();
-                            if (hit is EnemyAICollisionDetect)
+                            if (hit is EnemyAICollisionDetect enemy)
                             {
-                                EnemyAICollisionDetect enemy = (EnemyAICollisionDetect)hit;
                                 int damage = GetInt("TurretConfig", "Enemy Damage");
                                 if (CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.mainScript.enemyType.enemyName))
                                 {
-                                    if (enemy.mainScript is NutcrackerEnemyAI)
+                                    if (enemy.mainScript is NutcrackerEnemyAI ncAI)
                                     {
-                                        if (((NutcrackerEnemyAI)enemy.mainScript).currentBehaviourStateIndex > 0)
+                                        if (ncAI.currentBehaviourStateIndex > 0)
                                         {
                                             enemy.mainScript.HitEnemyOnLocalClient(damage);
                                             hits = true;
@@ -881,7 +940,7 @@ namespace FairAI
                             }
                             else
                             {
-                                if (!(hit is Turret))
+                                if (hit is not Turret)
                                 {
                                     hit.Hit(1, forward, null, true);
                                     hits = true;

@@ -1,4 +1,7 @@
 ﻿using GameNetcodeStuff;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -74,10 +77,49 @@ namespace FairAI.Patches
                 else if (component2.CheckConditionsForSinkingInQuicksand())
                 {
                     Debug.Log("Set local player to sinking!");
+                    float hinderance = __instance.movementHinderance;
                     __instance.sinkingLocalPlayer = true;
                     component2.sourcesCausingSinking++;
                     component2.isMovementHindered++;
-                    component2.hinderedMultiplier *= __instance.movementHinderance;
+                    component2.hinderedMultiplier *= hinderance;
+                    if (Plugin.rubberBootsType != null)
+                    {
+                        MethodInfo reduceMethod = Plugin.rubberBootsType.GetMethod("ReduceMovementHinderance");
+                        MethodInfo clearMethod = Plugin.rubberBootsType.GetMethod("ClearMovementHinderance");
+
+                        // Load the type from the MoreShipUpgrades assembly
+                        Type upgradeBusType = Plugin.lguAssembly.GetType("MoreShipUpgrades.Managers.UpgradeBus");
+                        Type customTerminalNodeType = Plugin.lguAssembly.GetType("MoreShipUpgrades.UI.TerminalNodes.CustomTerminalNode");
+
+                        // Get the static "Instance" property (this holds the singleton)
+                        PropertyInfo instanceProp = upgradeBusType.GetProperty("Instance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+                        // Retrieve the UpgradeBus instance
+                        object upgradeBusInstance = instanceProp.GetValue(null);
+                        int[] upgradeStats = Utils.GetLateGameUpgradeTier("Rubber Boots");
+
+                        if (upgradeStats.Length > 0)
+                        {
+                            // Now you can access instance fields or methods from it:
+                            FieldInfo upgradeLevelsField = upgradeBusType.GetField("upgradeLevels", BindingFlags.Instance | BindingFlags.NonPublic);
+                            Dictionary<string, int> upgradeLevels = (Dictionary<string, int>)upgradeLevelsField.GetValue(upgradeBusInstance);
+                            int rubberBootsLvl = upgradeLevels["Rubber Boots"];
+                            Plugin.logger.LogInfo("Rubber Boots Tier: " + rubberBootsLvl);
+                            // Call the static methods
+                            float adjustedHinderance = (float)reduceMethod.Invoke(null, [hinderance]);
+
+                            // Apply your modified hinderance
+                            component2.hinderedMultiplier *= adjustedHinderance;
+
+                            // Reset or clear effect
+                            clearMethod.Invoke(null, [(int)adjustedHinderance]);
+                            if (upgradeStats[0] == upgradeStats[1])
+                            {
+                                component2.isMovementHindered = 0;
+                                component2.hinderedMultiplier = 1f;
+                            }
+                        }
+                    }
                     if (__instance.isWater)
                     {
                         component2.sinkingSpeedMultiplier = 0f;
@@ -88,7 +130,7 @@ namespace FairAI.Patches
                     }
                 }
             }
-            if (other.gameObject.GetComponent<EnemyAICollisionDetect>() != null)
+            if (other.gameObject.GetComponent<EnemyAICollisionDetect>() != null && Plugin.GetBool("Mobs", "QuicksandAllMobs"))
             {
                 EnemyAICollisionDetect enemyAI = other.gameObject.GetComponent<EnemyAICollisionDetect>();
                 if (enemyAI != null)
@@ -110,7 +152,10 @@ namespace FairAI.Patches
                                 agent.acceleration = speeds[1] * newSpeed;
                             }
                         }
-                        SetSinking(enemyAI);
+                        if (Plugin.GetBool("Mobs", Plugin.RemoveInvalidCharacters(ai.enemyType.enemyName) + ".Quicksand Kill"))
+                        {
+                            SetSinking(enemyAI);
+                        }
                     }
                 }
             }
@@ -119,7 +164,7 @@ namespace FairAI.Patches
 
         public static bool OnTriggerExitPatch(ref QuicksandTrigger __instance, Collider other)
         {
-            if (other.gameObject.GetComponent<EnemyAICollisionDetect>() != null)
+            if (other.gameObject.GetComponent<EnemyAICollisionDetect>() != null && Plugin.GetBool("Mobs", "QuicksandAllMobs"))
             {
                 EnemyAICollisionDetect enemyAI = other.gameObject.GetComponent<EnemyAICollisionDetect>();
                 EnemyAI ai = enemyAI.mainScript;
@@ -127,13 +172,46 @@ namespace FairAI.Patches
 
                 ai.agent.speed = speeds[0];
                 ai.agent.acceleration = speeds[1];
-                enemyAI.transform.position = new Vector3(enemyAI.transform.position.x, Plugin.positions[enemyAI.GetInstanceID()].y, enemyAI.transform.position.z);
-                Plugin.sinkingValues[enemyAI.GetInstanceID()] = 0f;
-                Plugin.sinkingProgress[enemyAI.GetInstanceID()] = 0;
+                if (Plugin.GetBool("Mobs", Plugin.RemoveInvalidCharacters(ai.enemyType.enemyName) + ".Quicksand Kill"))
+                {
+                    ai.transform.position = new Vector3(ai.transform.position.x, Plugin.positions[enemyAI.GetInstanceID()].y, ai.transform.position.z);
+                    ai.SyncPositionToClients();
+                    Plugin.sinkingValues[enemyAI.GetInstanceID()] = 0f;
+                    Plugin.sinkingProgress[enemyAI.GetInstanceID()] = 0;
+                }
             }
             else
             {
                 __instance.OnExit(other);
+            }
+            return false;
+        }
+
+        public static bool StopSinkingLocalPlayerPatch(ref QuicksandTrigger __instance, PlayerControllerB playerScript)
+        {
+            if (__instance.sinkingLocalPlayer)
+            {
+                __instance.sinkingLocalPlayer = false;
+
+                playerScript.sourcesCausingSinking = Mathf.Clamp(playerScript.sourcesCausingSinking - 1, 0, 100);
+                playerScript.isMovementHindered = Mathf.Clamp(playerScript.isMovementHindered - 1, 0, 100);
+
+                MethodInfo reduceMethod = Plugin.rubberBootsType.GetMethod("ReduceMovementHinderance");
+                MethodInfo clearMethod = Plugin.rubberBootsType.GetMethod("ClearMovementHinderance");
+
+                float adjustedHinderance = (float)reduceMethod.Invoke(null, [__instance.movementHinderance]);
+
+                playerScript.hinderedMultiplier = Mathf.Clamp(
+                    playerScript.hinderedMultiplier / adjustedHinderance,
+                    1f, 100f
+                );
+
+                clearMethod.Invoke(null, [(int)adjustedHinderance]);
+
+                if (playerScript.isMovementHindered == 0 && __instance.isWater)
+                {
+                    playerScript.isUnderwater = false;
+                }
             }
             return false;
         }
@@ -162,14 +240,17 @@ namespace FairAI.Patches
 
             Plugin.sinkingProgress[enemy.GetInstanceID()] = Mathf.Clamp((Time.deltaTime / Plugin.GetFloat("Quick Sand Config", "Sink Time") / heightModifier), 0, 1);
 
-
+            Vector3 enemyPos = enemy.mainScript.transform.position;
             // Sink toward a target offset (e.g., fully underground)
-            Vector3 targetPos = enemy.transform.position - Vector3.up * height;
-            enemy.transform.position = Vector3.Lerp(enemy.transform.position, targetPos, Plugin.sinkingProgress[enemy.GetInstanceID()]);
-
+            Vector3 targetPos = enemyPos - Vector3.up * height;
+            enemy.mainScript.transform.position = Vector3.Lerp(enemyPos, targetPos, Plugin.sinkingProgress[enemy.GetInstanceID()]);
+            enemy.mainScript.SyncPositionToClients();
             sinkingValue = Mathf.Clamp(sinkingValue + (Time.deltaTime * 0.75f), 0f, Plugin.GetFloat("Quick Sand Config", "Sink Time"));
             if (Plugin.sinkingValues[enemy.GetInstanceID()] >= Plugin.GetFloat("Quick Sand Config", "Sink Time") - 0.01f)
             {
+                Plugin.sinkingProgress.Remove(enemy.GetInstanceID());
+                Plugin.sinkingValues.Remove(enemy.GetInstanceID());
+                Plugin.positions.Remove(enemy.GetInstanceID());
                 enemy.mainScript.KillEnemyOnOwnerClient(enemy.mainScript.enemyType.destroyOnDeath);
             }
             if (enemy != null)

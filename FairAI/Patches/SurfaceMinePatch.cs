@@ -37,7 +37,7 @@ namespace FairAI.Patches
                     if (Plugin.CanMob("BerthaAllMobs", ".Bertha", component.mainScript.enemyType.enemyName.ToUpper()))
                     {
                         MethodInfo TriggerMineOnLocalClientByExiting = berthaType.GetMethod("TriggerMineOnLocalClientByExiting", BindingFlags.NonPublic | BindingFlags.Instance);
-                        TriggerMineOnLocalClientByExiting.Invoke(__instance, new object[] { -1 });
+                        TriggerMineOnLocalClientByExiting.Invoke(__instance, [-1]);
                     }
                 }
             }
@@ -60,7 +60,7 @@ namespace FairAI.Patches
                     if (Plugin.CanMob("SeamineAllMobs", ".Seamine", component.mainScript.enemyType.enemyName.ToUpper()))
                     {
                         MethodInfo TriggerMineOnLocalClientByExiting = seaMineType.GetMethod("TriggerMineOnLocalClientByExiting", BindingFlags.NonPublic | BindingFlags.Instance);
-                        TriggerMineOnLocalClientByExiting.Invoke(__instance, new object[] { });
+                        TriggerMineOnLocalClientByExiting.Invoke(__instance, []);
                     }
                 }
             }

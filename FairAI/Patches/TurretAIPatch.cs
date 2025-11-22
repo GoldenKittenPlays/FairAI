@@ -450,7 +450,7 @@ internal class TurretAIPatch
                     wasTargetingPlayerLastFrame.SetValue(turret, false);
                     targetingDeadPlayer.SetValue(turret, true);
                     turret.turretAnimator.SetInteger("TurretMode", 0);
-                    SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
+                    SwitchTurretMode.Invoke(turret, [TurretMode.Detection]);
                 }
                 else
                 {
@@ -465,7 +465,7 @@ internal class TurretAIPatch
                                 wasTargetingPlayerLastFrame.SetValue(turret, false);
                                 targetingDeadPlayer.SetValue(turret, true);
                                 turret.turretAnimator.SetInteger("TurretMode", 0);
-                                SwitchTurretMode.Invoke(turret, new object[1] { TurretMode.Detection });
+                                SwitchTurretMode.Invoke(turret, [TurretMode.Detection]);
                             }
                         }
                         else if (turret.targetTransform.GetComponent<EnemyAICollisionDetect>())

@@ -1,5 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
@@ -20,29 +19,26 @@
     <Reference Include="Assembly-CSharp">
       <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
-    <Reference Include="BepInEx.MonoMod.HookGenPatcher">
-      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\patchers\Evaisa-HookGenPatcher\BepInEx.MonoMod.HookGenPatcher\BepInEx.MonoMod.HookGenPatcher.dll</HintPath>
-    </Reference>
     <Reference Include="LethalConfig">
-      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\plugins\AinaVT-LethalConfig\LethalConfig\LethalConfig.dll</HintPath>
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\References\BepInEx\plugins\AinaVT-LethalConfig\LethalConfig\LethalConfig.dll</HintPath>
     </Reference>
     <Reference Include="LethalLib">
-      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\plugins\Evaisa-LethalLib\LethalLib\LethalLib.dll</HintPath>
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\References\BepInEx\plugins\Evaisa-LethalLib\LethalLib\LethalLib.dll</HintPath>
     </Reference>
     <Reference Include="LethalThings">
-      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\plugins\Evaisa-LethalThings\LethalThings\LethalThings.dll</HintPath>
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\References\BepInEx\plugins\Evaisa-LethalThings\LethalThings\LethalThings.dll</HintPath>
     </Reference>
-    <Reference Include="MonoMod">
-      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\patchers\Evaisa-HookGenPatcher\BepInEx.MonoMod.HookGenPatcher\MonoMod.dll</HintPath>
-    </Reference>
-    <Reference Include="MonoMod.RuntimeDetour.HookGen">
-      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\patchers\Evaisa-HookGenPatcher\BepInEx.MonoMod.HookGenPatcher\MonoMod.RuntimeDetour.HookGen.dll</HintPath>
+    <Reference Include="MoreShipUpgrades">
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\References\BepInEx\plugins\malco-Lategame_Upgrades\MoreShipUpgrades\MoreShipUpgrades.dll</HintPath>
     </Reference>
     <Reference Include="SolidLib">
-      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\plugins\SolidStone-SolidLib\SolidLib.dll</HintPath>
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\References\BepInEx\plugins\SolidStone-SolidLib\SolidLib.dll</HintPath>
     </Reference>
     <Reference Include="Surfaced">
-      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\FluffModTest\BepInEx\plugins\SurfacedTeam-Surfaced\Surfaced.dll</HintPath>
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\References\BepInEx\plugins\SurfacedTeam-Surfaced\LC-Surfaced\Surfaced.dll</HintPath>
+    </Reference>
+    <Reference Include="TheNameIsTyler.TurretSettings">
+      <HintPath>..\..\..\..\Thunderstore\Data\LethalCompany\profiles\References\BepInEx\plugins\TheNameIsTyler-TurretSettings\TheNameIsTyler.TurretSettings.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Netcode.Components">
       <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Components.dll</HintPath>
@@ -75,5 +71,4 @@
       <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
     </Reference>
   </ItemGroup>
-
 </Project>
