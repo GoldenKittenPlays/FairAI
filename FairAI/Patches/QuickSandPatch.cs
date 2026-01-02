@@ -100,11 +100,8 @@ namespace FairAI.Patches
 
                         if (upgradeStats.Length > 0)
                         {
-                            // Now you can access instance fields or methods from it:
-                            FieldInfo upgradeLevelsField = upgradeBusType.GetField("upgradeLevels", BindingFlags.Instance | BindingFlags.NonPublic);
-                            Dictionary<string, int> upgradeLevels = (Dictionary<string, int>)upgradeLevelsField.GetValue(upgradeBusInstance);
-                            int rubberBootsLvl = upgradeLevels["Rubber Boots"];
-                            Plugin.logger.LogInfo("Rubber Boots Tier: " + rubberBootsLvl);
+                            Plugin.logger.LogInfo("Rubber Boots Tier: " + upgradeStats[0]);
+
                             // Call the static methods
                             float adjustedHinderance = (float)reduceMethod.Invoke(null, [hinderance]);
 
@@ -113,6 +110,8 @@ namespace FairAI.Patches
 
                             // Reset or clear effect
                             clearMethod.Invoke(null, [(int)adjustedHinderance]);
+
+                            // currentUpgrade == maxUpgrade
                             if (upgradeStats[0] == upgradeStats[1])
                             {
                                 playerScript.isMovementHindered = 0;
