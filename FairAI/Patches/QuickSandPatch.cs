@@ -11,6 +11,8 @@ namespace FairAI.Patches
     {
         public static bool OnTriggerStayPatch(ref QuicksandTrigger __instance, Collider other)
         {
+            PlayerControllerB playerScript = other.gameObject.GetComponent<PlayerControllerB>();
+
             if (__instance.isWater)
             {
                 if (!other.gameObject.CompareTag("Player") && other.gameObject.GetComponent<EnemyAICollisionDetect>() == null)
@@ -23,10 +25,9 @@ namespace FairAI.Patches
                 }
                 else
                 {
-                    PlayerControllerB component = other.gameObject.GetComponent<PlayerControllerB>();
-                    if (component != GameNetworkManager.Instance.localPlayerController && component != null && component.underwaterCollider != __instance)
+                    if (playerScript != GameNetworkManager.Instance.localPlayerController && playerScript != null && playerScript.underwaterCollider != __instance)
                     {
-                        component.underwaterCollider = __instance.gameObject.GetComponent<Collider>();
+                        playerScript.underwaterCollider = __instance.gameObject.GetComponent<Collider>();
                         return false;
                     }
                 }
@@ -37,51 +38,51 @@ namespace FairAI.Patches
                 return false;
             }
 
-            PlayerControllerB component2 = other.gameObject.GetComponent<PlayerControllerB>();
-            if (component2 != null)
+            if (playerScript != null)
             {
-                if (component2 != GameNetworkManager.Instance.localPlayerController)
+                if (playerScript != GameNetworkManager.Instance.localPlayerController)
                 {
                     return false;
                 }
 
-                if ((__instance.isWater && component2.isInsideFactory != __instance.isInsideWater) || component2.isInElevator)
+                if ((__instance.isWater && playerScript.isInsideFactory != __instance.isInsideWater) || playerScript.isInElevator)
                 {
                     if (__instance.sinkingLocalPlayer)
                     {
-                        __instance.StopSinkingLocalPlayer(component2);
+                        __instance.StopSinkingLocalPlayer(playerScript);
                     }
 
                     return false;
                 }
 
-                if (__instance.isWater && !component2.isUnderwater)
+                if (__instance.isWater && !playerScript.isUnderwater)
                 {
-                    component2.underwaterCollider = __instance.gameObject.GetComponent<Collider>();
-                    component2.isUnderwater = true;
+                    playerScript.underwaterCollider = __instance.gameObject.GetComponent<Collider>();
+                    playerScript.isUnderwater = true;
                 }
 
-                component2.statusEffectAudioIndex = __instance.audioClipIndex;
-                if (component2.isSinking)
+                playerScript.statusEffectAudioIndex = __instance.audioClipIndex;
+                if (playerScript.isSinking)
                 {
                     return false;
                 }
 
                 if (__instance.sinkingLocalPlayer)
                 {
-                    if (!component2.CheckConditionsForSinkingInQuicksand())
+                    if (!playerScript.CheckConditionsForSinkingInQuicksand())
                     {
-                        __instance.StopSinkingLocalPlayer(component2);
+                        __instance.StopSinkingLocalPlayer(playerScript);
                     }
                 }
-                else if (component2.CheckConditionsForSinkingInQuicksand())
+                else if (playerScript.CheckConditionsForSinkingInQuicksand())
                 {
                     Debug.Log("Set local player to sinking!");
                     float hinderance = __instance.movementHinderance;
                     __instance.sinkingLocalPlayer = true;
-                    component2.sourcesCausingSinking++;
-                    component2.isMovementHindered++;
-                    component2.hinderedMultiplier *= hinderance;
+                    playerScript.sourcesCausingSinking++;
+                    playerScript.isMovementHindered++;
+                    playerScript.hinderedMultiplier *= hinderance;
+
                     if (Plugin.rubberBootsType != null)
                     {
                         MethodInfo reduceMethod = Plugin.rubberBootsType.GetMethod("ReduceMovementHinderance");
@@ -109,24 +110,24 @@ namespace FairAI.Patches
                             float adjustedHinderance = (float)reduceMethod.Invoke(null, [hinderance]);
 
                             // Apply your modified hinderance
-                            component2.hinderedMultiplier *= adjustedHinderance;
+                            playerScript.hinderedMultiplier *= adjustedHinderance;
 
                             // Reset or clear effect
                             clearMethod.Invoke(null, [(int)adjustedHinderance]);
                             if (upgradeStats[0] == upgradeStats[1])
                             {
-                                component2.isMovementHindered = 0;
-                                component2.hinderedMultiplier = 1f;
+                                playerScript.isMovementHindered = 0;
+                                playerScript.hinderedMultiplier = 1f;
                             }
                         }
                     }
                     if (__instance.isWater)
                     {
-                        component2.sinkingSpeedMultiplier = 0f;
+                        playerScript.sinkingSpeedMultiplier = 0f;
                     }
                     else
                     {
-                        component2.sinkingSpeedMultiplier = __instance.sinkingSpeedMultiplier;
+                        playerScript.sinkingSpeedMultiplier = __instance.sinkingSpeedMultiplier;
                     }
                 }
             }
