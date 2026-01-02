@@ -11,6 +11,8 @@ namespace FairAI.Patches
     {
         public static bool OnTriggerStayPatch(ref QuicksandTrigger __instance, Collider other)
         {
+            PlayerControllerB playerScript = other.gameObject.GetComponent<PlayerControllerB>();
+
             if (__instance.isWater)
             {
                 if (!other.gameObject.CompareTag("Player") && other.gameObject.GetComponent<EnemyAICollisionDetect>() == null)
@@ -23,10 +25,9 @@ namespace FairAI.Patches
                 }
                 else
                 {
-                    PlayerControllerB component = other.gameObject.GetComponent<PlayerControllerB>();
-                    if (component != GameNetworkManager.Instance.localPlayerController && component != null && component.underwaterCollider != __instance)
+                    if (playerScript != GameNetworkManager.Instance.localPlayerController && playerScript != null && playerScript.underwaterCollider != __instance)
                     {
-                        component.underwaterCollider = __instance.gameObject.GetComponent<Collider>();
+                        playerScript.underwaterCollider = __instance.gameObject.GetComponent<Collider>();
                         return false;
                     }
                 }
@@ -37,51 +38,50 @@ namespace FairAI.Patches
                 return false;
             }
 
-            PlayerControllerB component2 = other.gameObject.GetComponent<PlayerControllerB>();
-            if (component2 != null)
+            if (playerScript != null)
             {
-                if (component2 != GameNetworkManager.Instance.localPlayerController)
+                if (playerScript != GameNetworkManager.Instance.localPlayerController)
                 {
                     return false;
                 }
 
-                if ((__instance.isWater && component2.isInsideFactory != __instance.isInsideWater) || component2.isInElevator)
+                if ((__instance.isWater && playerScript.isInsideFactory != __instance.isInsideWater) || playerScript.isInElevator)
                 {
                     if (__instance.sinkingLocalPlayer)
                     {
-                        __instance.StopSinkingLocalPlayer(component2);
+                        __instance.StopSinkingLocalPlayer(playerScript);
                     }
 
                     return false;
                 }
 
-                if (__instance.isWater && !component2.isUnderwater)
+                if (__instance.isWater && !playerScript.isUnderwater)
                 {
-                    component2.underwaterCollider = __instance.gameObject.GetComponent<Collider>();
-                    component2.isUnderwater = true;
+                    playerScript.underwaterCollider = __instance.gameObject.GetComponent<Collider>();
+                    playerScript.isUnderwater = true;
                 }
 
-                component2.statusEffectAudioIndex = __instance.audioClipIndex;
-                if (component2.isSinking)
+                playerScript.statusEffectAudioIndex = __instance.audioClipIndex;
+                if (playerScript.isSinking)
                 {
                     return false;
                 }
 
                 if (__instance.sinkingLocalPlayer)
                 {
-                    if (!component2.CheckConditionsForSinkingInQuicksand())
+                    if (!playerScript.CheckConditionsForSinkingInQuicksand())
                     {
-                        __instance.StopSinkingLocalPlayer(component2);
+                        __instance.StopSinkingLocalPlayer(playerScript);
                     }
                 }
-                else if (component2.CheckConditionsForSinkingInQuicksand())
+                else if (playerScript.CheckConditionsForSinkingInQuicksand())
                 {
                     Debug.Log("Set local player to sinking!");
                     float hinderance = __instance.movementHinderance;
                     __instance.sinkingLocalPlayer = true;
-                    component2.sourcesCausingSinking++;
-                    component2.isMovementHindered++;
-                    component2.hinderedMultiplier *= hinderance;
+                    playerScript.sourcesCausingSinking++;
+                    playerScript.isMovementHindered++;
+
                     if (Plugin.rubberBootsType != null)
                     {
                         MethodInfo reduceMethod = Plugin.rubberBootsType.GetMethod("ReduceMovementHinderance");
@@ -100,33 +100,36 @@ namespace FairAI.Patches
 
                         if (upgradeStats.Length > 0)
                         {
-                            // Now you can access instance fields or methods from it:
-                            FieldInfo upgradeLevelsField = upgradeBusType.GetField("upgradeLevels", BindingFlags.Instance | BindingFlags.NonPublic);
-                            Dictionary<string, int> upgradeLevels = (Dictionary<string, int>)upgradeLevelsField.GetValue(upgradeBusInstance);
-                            int rubberBootsLvl = upgradeLevels["Rubber Boots"];
-                            Plugin.logger.LogInfo("Rubber Boots Tier: " + rubberBootsLvl);
+                            Plugin.logger.LogInfo("Rubber Boots Tier: " + upgradeStats[0]);
+
                             // Call the static methods
                             float adjustedHinderance = (float)reduceMethod.Invoke(null, [hinderance]);
 
                             // Apply your modified hinderance
-                            component2.hinderedMultiplier *= adjustedHinderance;
+                            playerScript.hinderedMultiplier *= adjustedHinderance;
 
                             // Reset or clear effect
                             clearMethod.Invoke(null, [(int)adjustedHinderance]);
+
+                            // currentUpgrade == maxUpgrade
                             if (upgradeStats[0] == upgradeStats[1])
                             {
-                                component2.isMovementHindered = 0;
-                                component2.hinderedMultiplier = 1f;
+                                playerScript.isMovementHindered = 0;
+                                playerScript.hinderedMultiplier = 1f;
                             }
                         }
+                    } else {
+                        // Apply vanilla hinderance if LategameUpgrades is not installed
+                        playerScript.hinderedMultiplier *= hinderance;
                     }
+
                     if (__instance.isWater)
                     {
-                        component2.sinkingSpeedMultiplier = 0f;
+                        playerScript.sinkingSpeedMultiplier = 0f;
                     }
                     else
                     {
-                        component2.sinkingSpeedMultiplier = __instance.sinkingSpeedMultiplier;
+                        playerScript.sinkingSpeedMultiplier = __instance.sinkingSpeedMultiplier;
                     }
                 }
             }
@@ -196,17 +199,23 @@ namespace FairAI.Patches
                 playerScript.sourcesCausingSinking = Mathf.Clamp(playerScript.sourcesCausingSinking - 1, 0, 100);
                 playerScript.isMovementHindered = Mathf.Clamp(playerScript.isMovementHindered - 1, 0, 100);
 
-                MethodInfo reduceMethod = Plugin.rubberBootsType.GetMethod("ReduceMovementHinderance");
-                MethodInfo clearMethod = Plugin.rubberBootsType.GetMethod("ClearMovementHinderance");
+                if (Plugin.rubberBootsType != null)
+                {
+                    MethodInfo reduceMethod = Plugin.rubberBootsType.GetMethod("ReduceMovementHinderance");
+                    MethodInfo clearMethod = Plugin.rubberBootsType.GetMethod("ClearMovementHinderance");
 
-                float adjustedHinderance = (float)reduceMethod.Invoke(null, [__instance.movementHinderance]);
+                    float adjustedHinderance = (float)reduceMethod.Invoke(null, [__instance.movementHinderance]);
 
-                playerScript.hinderedMultiplier = Mathf.Clamp(
-                    playerScript.hinderedMultiplier / adjustedHinderance,
-                    1f, 100f
-                );
+                    playerScript.hinderedMultiplier = Mathf.Clamp(
+                        playerScript.hinderedMultiplier / adjustedHinderance,
+                        1f, 100f
+                    );
 
-                clearMethod.Invoke(null, [(int)adjustedHinderance]);
+                    clearMethod.Invoke(null, [(int)adjustedHinderance]);
+                } else {
+                    // Apply vanilla hinderance if LategameUpgrades is not installed
+                    playerScript.hinderedMultiplier = Mathf.Clamp(playerScript.hinderedMultiplier / __instance.movementHinderance, 1f, 100f);
+                }
 
                 if (playerScript.isMovementHindered == 0 && __instance.isWater)
                 {
