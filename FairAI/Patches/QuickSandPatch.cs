@@ -81,7 +81,6 @@ namespace FairAI.Patches
                     __instance.sinkingLocalPlayer = true;
                     playerScript.sourcesCausingSinking++;
                     playerScript.isMovementHindered++;
-                    playerScript.hinderedMultiplier *= hinderance;
 
                     if (Plugin.rubberBootsType != null)
                     {
@@ -120,7 +119,11 @@ namespace FairAI.Patches
                                 playerScript.hinderedMultiplier = 1f;
                             }
                         }
+                    } else {
+                        // Apply vanilla hinderance if LategameUpgrades is not installed
+                        playerScript.hinderedMultiplier *= hinderance;
                     }
+
                     if (__instance.isWater)
                     {
                         playerScript.sinkingSpeedMultiplier = 0f;
@@ -197,17 +200,23 @@ namespace FairAI.Patches
                 playerScript.sourcesCausingSinking = Mathf.Clamp(playerScript.sourcesCausingSinking - 1, 0, 100);
                 playerScript.isMovementHindered = Mathf.Clamp(playerScript.isMovementHindered - 1, 0, 100);
 
-                MethodInfo reduceMethod = Plugin.rubberBootsType.GetMethod("ReduceMovementHinderance");
-                MethodInfo clearMethod = Plugin.rubberBootsType.GetMethod("ClearMovementHinderance");
+                if (Plugin.rubberBootsType != null)
+                {
+                    MethodInfo reduceMethod = Plugin.rubberBootsType.GetMethod("ReduceMovementHinderance");
+                    MethodInfo clearMethod = Plugin.rubberBootsType.GetMethod("ClearMovementHinderance");
 
-                float adjustedHinderance = (float)reduceMethod.Invoke(null, [__instance.movementHinderance]);
+                    float adjustedHinderance = (float)reduceMethod.Invoke(null, [__instance.movementHinderance]);
 
-                playerScript.hinderedMultiplier = Mathf.Clamp(
-                    playerScript.hinderedMultiplier / adjustedHinderance,
-                    1f, 100f
-                );
+                    playerScript.hinderedMultiplier = Mathf.Clamp(
+                        playerScript.hinderedMultiplier / adjustedHinderance,
+                        1f, 100f
+                    );
 
-                clearMethod.Invoke(null, [(int)adjustedHinderance]);
+                    clearMethod.Invoke(null, [(int)adjustedHinderance]);
+                } else {
+                    // Apply vanilla hinderance if LategameUpgrades is not installed
+                    playerScript.hinderedMultiplier = Mathf.Clamp(playerScript.hinderedMultiplier / __instance.movementHinderance, 1f, 100f);
+                }
 
                 if (playerScript.isMovementHindered == 0 && __instance.isWater)
                 {
