@@ -29,6 +29,10 @@ namespace FairAI.Configuration
         internal ConfigEntry<bool> hitOtherTurrets;
 
         // [Mobs] global toggles
+        /*
+        * Global mob settings are overriden by specific mob settings when the
+        * former are set to True: the latter are ignored when the Global is False.
+        */
         internal ConfigEntry<bool> quicksandAllMobs;
         internal ConfigEntry<bool> explodeAllMobs;
         internal ConfigEntry<bool> boombaAllMobs;
