@@ -17,7 +17,7 @@ namespace FairAI.Patches
                 if (component != null && !component.mainScript.isEnemyDead)
                 {
                     // if (Plugin.CanMob("ExplodeAllMobs", ".Mine", component.mainScript.enemyType.enemyName.ToUpper()))  CACHED
-                    if (Plugin.Settings.GetMob(component.mainScript.enemyType)?.Mine == true)  
+                    if (Plugin.Settings.ExplodeAllMobs && Plugin.Settings.GetMob(component.mainScript.enemyType)?.Mine == true)  
                     {
                         ___pressMineDebounceTimer = 0.5f;
                         __instance.PressMineServerRpc();
@@ -34,7 +34,7 @@ namespace FairAI.Patches
                 if (component != null && !component.mainScript.isEnemyDead)
                 {
                     // if (Plugin.CanMob("ExplodeAllMobs", ".Mine", component.mainScript.enemyType.enemyName.ToUpper())) CACHED
-                    if(Plugin.Settings.GetMob(component.mainScript.enemyType)?.Mine == true)
+                    if(Plugin.Settings.ExplodeAllMobs && Plugin.Settings.GetMob(component.mainScript.enemyType)?.Mine == true)
                     {
                         if (!__instance.hasExploded)
                         {

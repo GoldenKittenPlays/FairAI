@@ -953,7 +953,7 @@ namespace FairAI
                         {
                             int damage = GetInt("TurretConfig", "Enemy Damage");
                             // if (CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.enemyType.enemyName)) CACHED
-                            if (Settings.GetMob(eAI.enemyType)?.TurretDamage == true)
+                            if (Settings.TurretDamageAllMobs && Settings.GetMob(eAI.enemyType)?.TurretDamage == true)
                             {
                                 if (eAI is not NutcrackerEnemyAI ncAI || (ncAI is not null && ncAI.currentBehaviourStateIndex > 0))
                                 {

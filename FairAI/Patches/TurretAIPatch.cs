@@ -26,8 +26,8 @@ internal class TurretAIPatch
             FieldInfo wasTargetingPlayerLastFrame = turretType.GetField("wasTargetingPlayerLastFrame", BindingFlags.Instance | BindingFlags.NonPublic);
             FieldInfo rotatingClockwise = turretType.GetField("rotatingClockwise", BindingFlags.Instance | BindingFlags.NonPublic);
             FieldInfo rotatingSmoothly = turretType.GetField("rotatingSmoothly", BindingFlags.Instance | BindingFlags.NonPublic);
-            MethodInfo SetTargetToPlayerBody = turretType.GetMethod("SetTargetToPlayerBody", BindingFlags.Instance | BindingFlags.NonPublic);
-            MethodInfo TurnTowardsTargetIfHasLOS = turretType.GetMethod("TurnTowardsTargetIfHasLOS", BindingFlags.Instance | BindingFlags.NonPublic);
+            // MethodInfo SetTargetToPlayerBody = turretType.GetMethod("SetTargetToPlayerBody", BindingFlags.Instance | BindingFlags.NonPublic);  UNUSED
+            // MethodInfo TurnTowardsTargetIfHasLOS = turretType.GetMethod("TurnTowardsTargetIfHasLOS", BindingFlags.Instance | BindingFlags.NonPublic); UNUSED
             if (!__instance.turretActive)
             {
                 wasTargetingPlayerLastFrame.SetValue(__instance, false);
@@ -165,7 +165,8 @@ internal class TurretAIPatch
         {
             turretInterval.SetValue(turret, 0f);
             EnemyAICollisionDetect enemy = CheckForEnemiesInLineOfSight(turret, 15f);
-            if (enemy != null && !enemy.mainScript.isEnemyDead && Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", enemy.mainScript.enemyType.enemyName))
+            // if (enemy != null && !enemy.mainScript.isEnemyDead && Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", enemy.mainScript.enemyType.enemyName)) CACHED
+            if (enemy != null && !enemy.mainScript.isEnemyDead && Plugin.Settings.GetMob(enemy.mainScript.enemyType)?.TurretTarget == true)
             {
                 turret_ai.targetWithRotation = enemy.mainScript;
                 turret.turretMode = TurretMode.Firing;

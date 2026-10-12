@@ -34,7 +34,8 @@ namespace FairAI.Patches
                 EnemyAICollisionDetect component = other.gameObject.GetComponent<EnemyAICollisionDetect>();
                 if (component != null && !component.mainScript.isEnemyDead)
                 {
-                    if (Plugin.CanMob("BerthaAllMobs", ".Bertha", component.mainScript.enemyType.enemyName.ToUpper()))
+                    // if (Plugin.CanMob("BerthaAllMobs", ".Bertha", component.mainScript.enemyType.enemyName.ToUpper())) CACHED
+                    if (Plugin.Settings.BerthaAllMobs && Plugin.Settings.GetMob(component.mainScript.enemyType)?.Bertha == true)
                     {
                         MethodInfo TriggerMineOnLocalClientByExiting = berthaType.GetMethod("TriggerMineOnLocalClientByExiting", BindingFlags.NonPublic | BindingFlags.Instance);
                         TriggerMineOnLocalClientByExiting.Invoke(__instance, [-1]);

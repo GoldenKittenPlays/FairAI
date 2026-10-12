@@ -50,7 +50,7 @@ namespace FairAI.Patches
                             if (enemy.mainScript.gameObject != __instance.gameObject)
                             {
                                 // if (Plugin.CanMob("BoombaAllMobs", ".Boomba", enemy.mainScript.enemyType.enemyName)) # CACHED
-                                if (Plugin.Settings.GetMob(enemy.mainScript.enemyType)?.Boomba == true)
+                                if (Plugin.Settings.BoombaAllMobs && Plugin.Settings.GetMob(enemy.mainScript.enemyType)?.Boomba == true)
                                 {
                                     if (enemy != null && enemy.mainScript.IsOwner && !enemy.mainScript.isEnemyDead)
                                     {
