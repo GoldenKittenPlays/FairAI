@@ -166,7 +166,8 @@ internal class TurretAIPatch
             turretInterval.SetValue(turret, 0f);
             EnemyAICollisionDetect enemy = CheckForEnemiesInLineOfSight(turret, 15f);
             // if (enemy != null && !enemy.mainScript.isEnemyDead && Plugin.CanMob("TurretTargetAllMobs", ".Turret Target", enemy.mainScript.enemyType.enemyName)) CACHED
-            if (enemy != null && !enemy.mainScript.isEnemyDead && Plugin.Settings.GetMob(enemy.mainScript.enemyType)?.TurretTarget == true)
+            if (enemy != null && !enemy.mainScript.isEnemyDead && 
+                Plugin.Settings.TurretTargetAllMobs && Plugin.Settings.GetMob(enemy.mainScript.enemyType)?.TurretTarget == true)
             {
                 turret_ai.targetWithRotation = enemy.mainScript;
                 turret.turretMode = TurretMode.Firing;
