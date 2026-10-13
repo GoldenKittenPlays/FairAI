@@ -593,24 +593,21 @@ namespace FairAI
             {
             # endif
                 if (StartOfRound.Instance && StartOfRound.Instance.shipHasLanded)
-                {
+                { // if the round has started and the ship has landed
                     // if (Can("Mobs", "CheckForPlayersInside")) CACHED
                     if (Settings.CheckForPlayersInside)
                     {
-                        if (StartOfRound.Instance.shipHasLanded)
-                        {
-                            if (IsAPlayersOutside() && (position.y > -80f || StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(position)))
-                            {
-                                return true;
-                            }
-                            else
-                            {
-                                return playersEnteredInside;
-                            }
+                        if (IsAPlayersOutside() && (position.y > -80f || StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(position)))
+                        {   // if a player is outside, and this turret is "outside" (defined by above a certain map height) or (this turret is inside the ship) (??)
+                            return true; // then allow fairness
+                        }
+                        else
+                        {  
+                            return playersEnteredInside; // other wise allow fairnes iff playersEnteredInside
                         }
                     }
                 }
-            return true;
+            return true; // if the round hasn't started or the ship hasn't landed, allow fairness (??)
             #if DEBUG
             }
             #endif
@@ -819,6 +816,7 @@ namespace FairAI
             {
                 if (isPrefix)
                 {
+                    // https://harmony.pardeike.net/v2/api/HarmonyLib.Harmony.html#HarmonyLib_Harmony_Patch_System_Reflection_MethodBase_HarmonyLib_HarmonyMethod_HarmonyLib_HarmonyMethod_HarmonyLib_HarmonyMethod_HarmonyLib_HarmonyMethod_
                     harmony.Patch(Method, new HarmonyMethod(Patch_Method), null, null, null, null);
                 }
                 else
