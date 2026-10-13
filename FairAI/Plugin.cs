@@ -1,6 +1,11 @@
+#if DEBUG
+#define ENABLE_PROFILER
+#endif
+
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using FairAI.Configuration;
 using FairAI.Patches;
 using GameNetcodeStuff;
 using HarmonyLib;
@@ -10,8 +15,11 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.AI;
+
+
 
 namespace FairAI
 {
@@ -56,6 +64,8 @@ namespace FairAI
 
         public static PropertyInfo tsBoundConfig;
 
+        internal static PluginSettings Settings { get; private set; }
+
         public const string ltModID = "evaisa.lethalthings";
         public const string surfacedModID = "Surfaced";
 
@@ -73,25 +83,40 @@ namespace FairAI
 
         private async void Awake()
         {
+            #if DEBUG // block gets removed on non-debug builds
+                // disable overhead of stack trace in dev build
+                Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
+                Application.SetStackTraceLogType(LogType.Warning, StackTraceLogType.None);
+                Application.SetStackTraceLogType(LogType.Error, StackTraceLogType.None);
+                Application.SetStackTraceLogType(LogType.Assert, StackTraceLogType.None);
+            #endif
             if (Instance == null)
             {
                 Instance = this;
             }
+
+            // What are the differences across these? -Pi
             allEnemies = [];
             enemies = [];
+            enemyList = [];
+
             items = [];
             itemList = [];
-            enemyList = [];
+
             speeds = [];
             positions = [];
+
             sinkingProgress = [];
-            turretSettings = [];
             sinkingValues = [];
+            turretSettings = [];
+
             surfacedAssembly = null;
             lguAssembly = null;
+            
             harmony = new Harmony(modGUID);
             logger = BepInEx.Logging.Logger.CreateLogSource(modGUID);
             harmony.PatchAll(typeof(Plugin));
+
             CreateHarmonyPatch(harmony, typeof(RoundManager), "Start", null, typeof(RoundManagerPatch), nameof(RoundManagerPatch.PatchStart), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Awake", null, typeof(LevelGenManPatch), nameof(LevelGenManPatch.PatchAwake), false);
             CreateHarmonyPatch(harmony, typeof(StartOfRound), "Start", null, typeof(StartOfRoundPatch), nameof(StartOfRoundPatch.PatchStart), false);
@@ -109,8 +134,14 @@ namespace FairAI
             CreateHarmonyPatch(harmony, typeof(Landmine), "Detonate", null, typeof(MineAIPatch), nameof(MineAIPatch.DetonatePatch), false);
             CreateHarmonyPatch(harmony, typeof(FlowermanAI), "HitEnemy", [typeof(int), typeof(PlayerControllerB), typeof(bool), typeof(int)], typeof(EnemyAIPatch), nameof(EnemyAIPatch.BrackenHitEnemyPatch), true);
             CreateHarmonyPatch(harmony, typeof(HoarderBugAI), "HitEnemy", [typeof(int), typeof(PlayerControllerB), typeof(bool), typeof(int)], typeof(EnemyAIPatch), nameof(EnemyAIPatch.HoardingBugHitEnemyPatch), true);
+
             await WaitForProcess(1);
+
             GetTurretSettings();
+
+            Settings = new PluginSettings();
+            Utils.BindGeneralSettings();
+
             logger.LogInfo("Fair AI initiated!");
         }
 
@@ -551,27 +582,38 @@ namespace FairAI
             }
             return list;
         }
-
+        
+        #if DEBUG
+        private static readonly ProfilerMarker s_CheckAllowFairness = new ProfilerMarker("TheFluff.FairAI.CheckAllowFairness");
+        # endif
         public static bool AllowFairness(Vector3 position)
         {
-            if (StartOfRound.Instance != null)
+            #if DEBUG
+            using (s_CheckAllowFairness.Auto())
             {
-                if (Can("CheckForPlayersInside"))
+            # endif
+                if (StartOfRound.Instance && StartOfRound.Instance.shipHasLanded)
                 {
-                    if (StartOfRound.Instance.shipHasLanded)
+                    // if (Can("Mobs", "CheckForPlayersInside")) CACHED
+                    if (Settings.CheckForPlayersInside)
                     {
-                        if (IsAPlayersOutside() && (position.y > -80f || StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(position)))
+                        if (StartOfRound.Instance.shipHasLanded)
                         {
-                            return true;
-                        }
-                        else
-                        {
-                            return playersEnteredInside;
+                            if (IsAPlayersOutside() && (position.y > -80f || StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(position)))
+                            {
+                                return true;
+                            }
+                            else
+                            {
+                                return playersEnteredInside;
+                            }
                         }
                     }
                 }
-            }
             return true;
+            #if DEBUG
+            }
+            #endif
         }
 
         public static bool IsAPlayersOutside()
@@ -642,16 +684,29 @@ namespace FairAI
             return false;
         }
 
-        public static bool Can(string identifier)
+        private static readonly ProfilerMarker s_CanSettingsCheck = new ProfilerMarker("TheFluff.FairAI.CanSettingsCheck");
+
+        public static bool Can(string parentIdentifier, string identifier)
         {
-            foreach (ConfigDefinition entry in Instance.Config.Keys)
-            {
-                if (RemoveInvalidCharacters(entry.Key.ToUpper()).Equals(RemoveInvalidCharacters(identifier.ToUpper())))
+            //using (s_CanSettingsCheck.Auto())
+            //{
+                try
                 {
-                    return Instance.Config[entry].BoxedValue.ToString().ToUpper().Equals("TRUE");
+                    ConfigEntry<bool> entry = null;
+                    Instance.Config.TryGetEntry(parentIdentifier, identifier, out entry);
+                    // TryGetEntry<T>(ConfigDefinition, out ConfigEntry<T>) https://docs.bepinex.dev/v5.4.16/api/BepInEx.Configuration.ConfigFile.html#BepInEx_Configuration_ConfigFile_TryGetEntry__1_BepInEx_Configuration_ConfigDefinition_BepInEx_Configuration_ConfigEntry___0___
+                    if (entry != null)
+                    {
+                        return entry.Value;
+                    }
+                    // if the config entry was not found fail
+                    return false;
                 }
-            }
-            return false;
+                catch
+                { // if the config is of unexpected type fail closed.
+                    return false;
+                }
+            //}
         }
 
         public static int GetInt(string parentIdentifier, string identifier)
@@ -878,80 +933,39 @@ namespace FairAI
         public static bool HitTargets(List<GameObject> targets, Vector3 forward)
         {
             bool hits = false;
-            if (!targets.Any())
-            {
-                return hits;
-            }
-            else
+            if (targets.Any())
             {
                 targets.ForEach(t =>
                 {
-                    if (t != null)
+                    if (t != null && (t.GetComponent<EnemyAI>() != null || t.GetComponent<IHittable>() != null))
                     {
+                        EnemyAI eAI = null;
+                        IHittable hit = null;
                         if (t.GetComponent<EnemyAI>() != null)
+                            eAI = t.GetComponent<EnemyAI>();
+                        else
                         {
-                            EnemyAI enemy = t.GetComponent<EnemyAI>();
-                            int damage = GetInt("TurretConfig", "Enemy Damage");
-                            if (CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.enemyType.enemyName))
-                            {
-                                if (enemy is NutcrackerEnemyAI ncAI)
-                                {
-                                    if (ncAI.currentBehaviourStateIndex > 0)
-                                    {
-                                        enemy.HitEnemyOnLocalClient(damage);
-                                        hits = true;
-                                    }
-                                }
-                                else
-                                {
-                                    enemy.HitEnemyOnLocalClient(damage);
-                                    hits = true;
-                                }
-                            }
+                            hit = t.GetComponent<IHittable>();
+                            if (hit is EnemyAICollisionDetect)
+                                eAI = ((EnemyAICollisionDetect)hit).mainScript;
                         }
-                        else if (t.GetComponent<IHittable>() != null)
+                        if (eAI)
                         {
-                            IHittable hit = t.GetComponent<IHittable>();
-                            if (hit is EnemyAICollisionDetect enemy)
+                            int damage = GetInt("TurretConfig", "Enemy Damage");
+                            // if (CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.enemyType.enemyName)) CACHED
+                            if (Settings.TurretDamageAllMobs && Settings.GetMob(eAI.enemyType)?.TurretDamage == true)
                             {
-                                int damage = GetInt("TurretConfig", "Enemy Damage");
-                                if (CanMob("TurretDamageAllMobs", ".Turret Damage", enemy.mainScript.enemyType.enemyName))
+                                if (eAI is not NutcrackerEnemyAI ncAI || (ncAI is not null && ncAI.currentBehaviourStateIndex > 0))
                                 {
-                                    if (enemy.mainScript is NutcrackerEnemyAI ncAI)
-                                    {
-                                        if (ncAI.currentBehaviourStateIndex > 0)
-                                        {
-                                            enemy.mainScript.HitEnemyOnLocalClient(damage);
-                                            hits = true;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        enemy.mainScript.HitEnemyOnLocalClient(damage);
-                                        hits = true;
-                                    }
-                                }
-                            }
-                            else if (hit is PlayerControllerB)
-                            {
-                                //hits = true;
-                            }
-                            else
-                            {
-                                if (hit is not Turret)
-                                {
-                                    hit.Hit(1, forward, null, true);
+                                    eAI.HitEnemyOnLocalClient(damage);
                                     hits = true;
                                 }
-                                else
-                                {
-                                    if (GetBool("TurretConfig", "HitOtherTurrets"))
-                                    {
-                                        hit.Hit(1, forward, null, true);
-                                        hits = true;
-                                    }
-                                }
                             }
+                        }                                             //GetBool("TurretConfig", "HitOtherTurrets") CACHED
+                        else if (hit is not Turret || (hit is Turret && Settings.HitOtherTurrets))
+                        {
+                            hit.Hit(1, forward, null, true);
+                            hits = true;
                         }
                     }
                 });

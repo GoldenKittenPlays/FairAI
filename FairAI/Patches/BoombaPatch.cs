@@ -49,7 +49,8 @@ namespace FairAI.Patches
                             EnemyAICollisionDetect enemy = array[i].gameObject.GetComponent<EnemyAICollisionDetect>();
                             if (enemy.mainScript.gameObject != __instance.gameObject)
                             {
-                                if (Plugin.CanMob("BoombaAllMobs", ".Boomba", enemy.mainScript.enemyType.enemyName))
+                                // if (Plugin.CanMob("BoombaAllMobs", ".Boomba", enemy.mainScript.enemyType.enemyName)) # CACHED
+                                if (Plugin.Settings.BoombaAllMobs && Plugin.Settings.GetMob(enemy.mainScript.enemyType)?.Boomba == true)
                                 {
                                     if (enemy != null && enemy.mainScript.IsOwner && !enemy.mainScript.isEnemyDead)
                                     {

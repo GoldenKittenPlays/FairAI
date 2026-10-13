@@ -9,7 +9,7 @@ namespace FairAI.Patches
 
         public static void PatchUpdate(ref StartOfRound __instance)
         {
-            if (Plugin.Can("CheckForPlayersInside"))
+            if (Plugin.Can("Mobs", "CheckForPlayersInside"))
             {
                 if(__instance.shipIsLeaving)
                 {
