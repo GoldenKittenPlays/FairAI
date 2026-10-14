@@ -125,7 +125,7 @@ namespace FairAI
             CreateHarmonyPatch(harmony, typeof(QuicksandTrigger), "StopSinkingLocalPlayer", [typeof(PlayerControllerB)], typeof(QuickSandPatch), nameof(QuickSandPatch.StopSinkingLocalPlayerPatch), true);
             CreateHarmonyPatch(harmony, typeof(QuicksandTrigger), "OnTriggerExit", [typeof(Collider)], typeof(QuickSandPatch), nameof(QuickSandPatch.OnTriggerExitPatch), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "Update", null, typeof(TurretAIPatch), nameof(TurretAIPatch.PatchUpdate), true);
-            CreateHarmonyPatch(harmony, typeof(Turret), "CheckForPlayersInLineOfSight", [typeof(float), typeof(bool)], typeof(TurretAIPatch), nameof(TurretAIPatch.CheckForTargetsInLOS), true);
+            //CreateHarmonyPatch(harmony, typeof(Turret), "CheckForPlayersInLineOfSight", [typeof(float), typeof(bool)], typeof(TurretAIPatch), nameof(TurretAIPatch.CheckForTargetsInLOS), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "SetTargetToPlayerBody", null, typeof(TurretAIPatch), nameof(TurretAIPatch.SetTargetToEnemyBody), true);
             CreateHarmonyPatch(harmony, typeof(Turret), "TurnTowardsTargetIfHasLOS", null, typeof(TurretAIPatch), nameof(TurretAIPatch.TurnTowardsTargetEnemyIfHasLOS), true);
             CreateHarmonyPatch(harmony, typeof(Landmine), "SpawnExplosion", [typeof(Vector3), typeof(bool), typeof(float), typeof(float), typeof(int), typeof(float), typeof(GameObject), typeof(bool)], typeof(MineAIPatch), nameof(MineAIPatch.PatchSpawnExplosion), false);

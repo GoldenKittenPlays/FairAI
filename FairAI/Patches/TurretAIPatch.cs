@@ -94,9 +94,11 @@ internal class TurretAIPatch
             }
             __instance.turretRod.rotation = Quaternion.RotateTowards(__instance.turretRod.rotation, __instance.turnTowardsObjectCompass.rotation, __instance.rotationSpeed * Time.deltaTime);
             return false; // skip any other prefix patches-- all turret behaviors acocunted for.
+        } else
+        {
+        return true; // if instance is null or fairness is not allowed, allow vanilla method to continue.
         }
         // return false; if our Turret instance is null or fairness is not allowed, skip all prefix patches (??)
-        return true; // if instance is null or fairness is not allowed, allow vanilla method to continue.
     }
 
     public static void DetectionFunction(Turret turret, FAIR_AI turret_ai)
