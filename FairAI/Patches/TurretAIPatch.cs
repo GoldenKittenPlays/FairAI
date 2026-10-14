@@ -522,10 +522,18 @@ internal class TurretAIPatch
         }
     }
 
+    #if DEBUG
+    private static readonly ProfilerMarker s_CheckCheck4TargetsInLOS = new ProfilerMarker("TheFluff.FairAI.CheckCheckForTargetsInLOS");
+    # endif
+
     /// <summary>
     /// Replaces CheckForPlayersInLineOfSight() in the original class, acting as a 
     /// sort of "filter method", which populates this FAIR_AI's targets before letting
     /// the original run if any targets were added, and skips it otherwise.
+    /// 
+    /// Interestingly, this filter function is not called anywhere else in this plugin,
+    /// and the places where the original method is called have all been replaced with the other
+    /// 'CheckFor' methods defined in this plugin.
     /// </summary>
     /// <param name="__instance"></param>
     /// <param name="radius"></param>
@@ -533,6 +541,10 @@ internal class TurretAIPatch
     /// <returns></returns>
     public static bool CheckForTargetsInLOS(ref Turret __instance, float radius = 2f, bool angleRangeCheck = false)
     {
+        #if DEBUG
+        using (s_CheckCheck4TargetsInLOS.Auto())
+        {
+        #endif
         FAIR_AI turret = (__instance).gameObject.GetComponent<FAIR_AI>();
         PlayerControllerB player = CheckForPlayersInLOS(__instance, radius, angleRangeCheck); // Call recreated instance method?
         EnemyAICollisionDetect enemy = CheckForEnemiesInLineOfSight(__instance, radius, angleRangeCheck);
@@ -555,6 +567,9 @@ internal class TurretAIPatch
             return true; // Continue to call original CheckForTargetsInLineOfSight()?
         }
         return false; // Continue to call original CheckForTargetsInLineOfSight()?
+        #if DEBUG
+        }
+        #endif
     }
 
     /// <summary>
