@@ -294,7 +294,9 @@ internal class TurretAIPatch
         }
         if ((float)turretInterval.GetValue(turret) >= fireRateInterval)
         {
+            #if DEBUG
             Plugin.logger.LogInfo("Attacking Target");
+            #endif
             turretInterval.SetValue(turret, 0f);
             if (CheckForPlayersInLOS(turret, 3f) == GameNetworkManager.Instance.localPlayerController)
             {
@@ -318,10 +320,9 @@ internal class TurretAIPatch
             }
             shootRay.SetValue(turret, new Ray(turret.aimPoint.position, turret.aimPoint.forward));
             RaycastHit rayHit = default(RaycastHit);
-            // end of vanilla behavior
-            // I'd say this is the meat of the plugin tbh-- at least as far as turrets are concerned -Pi
+            
             if (Physics.Raycast((Ray)shootRay.GetValue(turret), out rayHit, 30f, StartOfRound.Instance.collidersAndRoomMask, (QueryTriggerInteraction)1))
-            {
+            { // this whole section is a lot more complex than its decompiled equivalent... -Pi
                 hit.SetValue(turret, rayHit);
                 Transform transform = (turret.bulletCollisionAudio).transform;
                 Ray val = (Ray)shootRay.GetValue(turret);
@@ -329,6 +330,10 @@ internal class TurretAIPatch
                 Ray val3 = val;
                 transform.position = ((Ray)(val3)).GetPoint(val2.distance - 0.5f);
             }
+            //
+            // end of vanilla behavior
+            //
+            // I'd say what follows is the meat of the plugin tbh-- at least as far as turrets are concerned -Pi
             Vector3 forward = turret.aimPoint.forward;
             forward = Quaternion.Euler(0f, (float)(int)(0f - turret.rotationRange) / 3f, 0f) * forward;
             Plugin.AttackTargets(turret.GetComponent<FAIR_AI>(), turret.aimPoint.position, forward, 30f);
@@ -517,10 +522,19 @@ internal class TurretAIPatch
         }
     }
 
+    /// <summary>
+    /// Replaces CheckForPlayersInLineOfSight() in the original class, acting as a 
+    /// sort of "filter method", which populates this FAIR_AI's targets before letting
+    /// the original run if any targets were added, and skips it otherwise.
+    /// </summary>
+    /// <param name="__instance"></param>
+    /// <param name="radius"></param>
+    /// <param name="angleRangeCheck"></param>
+    /// <returns></returns>
     public static bool CheckForTargetsInLOS(ref Turret __instance, float radius = 2f, bool angleRangeCheck = false)
     {
         FAIR_AI turret = (__instance).gameObject.GetComponent<FAIR_AI>();
-        PlayerControllerB player = CheckForPlayersInLOS(__instance, radius, angleRangeCheck);
+        PlayerControllerB player = CheckForPlayersInLOS(__instance, radius, angleRangeCheck); // Call recreated instance method?
         EnemyAICollisionDetect enemy = CheckForEnemiesInLineOfSight(__instance, radius, angleRangeCheck);
         if (player != null)
         {
@@ -528,8 +542,8 @@ internal class TurretAIPatch
             {
                 0,
                 (player).gameObject
-            } };
-            return true;
+            } }; // Whole new Dictionary<>() every time a player is in LOS?
+            return true; // Continue to call original CheckForTargetsInLineOfSight()?
         }
         if (enemy != null)
         {
@@ -537,12 +551,21 @@ internal class TurretAIPatch
             {
                 1,
                 (enemy).gameObject
-            } };
-            return true;
+            } }; // Whole new Dictionary<>() every time an enemy is in LOS?
+            return true; // Continue to call original CheckForTargetsInLineOfSight()?
         }
-        return false;
+        return false; // Continue to call original CheckForTargetsInLineOfSight()?
     }
 
+    /// <summary>
+    /// Instance method recreated so that it is available for the different turret
+    /// "Condition" updates since CheckForTargetInLOS() patches this (similarly named)
+    /// method in the original class.
+    /// </summary>
+    /// <param name="turret"></param>
+    /// <param name="radius"></param>
+    /// <param name="angleRangeCheck"></param>
+    /// <returns></returns>
     public static PlayerControllerB CheckForPlayersInLOS(Turret turret, float radius = 2f, bool angleRangeCheck = false)
     {
         Vector3 forward = turret.aimPoint.forward;

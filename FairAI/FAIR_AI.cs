@@ -23,7 +23,7 @@ namespace FairAI
             {
                 System.Type turretType = typeof(Turret);
                 MethodInfo mode_s_method = turretType.GetMethod("SwitchTurretMode", BindingFlags.NonPublic | BindingFlags.Instance);
-                mode_s_method.Invoke(turret, new object[] { 2 });
+                mode_s_method.Invoke(turret, [2]);
                 //turret.SwitchTurretMode(1);
             }
         }
